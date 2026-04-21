@@ -1,0 +1,26 @@
+# enable verbose logging and diagnostics
+debug: false
+
+tokens:
+  # server secret for signing auth tokens; auto-generated if empty
+  secret: ""
+  # openrouter.ai api token (required)
+  openrouter: ""
+
+server:
+  # port to serve paws on (required; default 3443)
+  port: 3443
+
+settings:
+  # the http timeout to use for completion requests in seconds (optional; default: 300s)
+  timeout: 1200
+  # the interval in which the model list is refreshed in minutes (optional; default: 30m)
+  refresh-interval: 30
+
+authentication:
+  # require login with username and password
+  enabled: true
+  # list of users with bcrypt password hashes
+  users:
+  - username: admin
+    password: $2a$12$eH6Du2grC7aOUDmff2SrC.yKPWea/fq0d76c3JsvhGxhGCEOnWTRy

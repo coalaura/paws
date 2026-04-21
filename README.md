@@ -65,13 +65,13 @@ debug: false
 
 tokens:
   # server secret for signing auth tokens; auto-generated if empty
-  secret:
+  secret: ""
   # openrouter.ai api token (required)
-  openrouter:
+  openrouter: ""
 
 server:
-  # port to serve paws on (required; default 3444)
-  port: 3444
+  # port to serve paws on (required; default 3443)
+  port: 3443
 
 settings:
   # the http timeout to use for completion requests in seconds (optional; default: 300s)
@@ -84,8 +84,8 @@ authentication:
   enabled: true
   # list of users with bcrypt password hashes
   users:
-  - username: joe
-    password: ...
+  - username: admin
+    password: $2a$12$eH6Du2grC7aOUDmff2SrC.yKPWea/fq0d76c3JsvhGxhGCEOnWTRy
 ```
 
 ## Authentication (optional)
@@ -96,8 +96,8 @@ paws supports simple, stateless authentication. If enabled, users must log in wi
 authentication:
   enabled: true
   users:
-    - username: admin
-      password: $2a$12$mhImN70h05wnqPxWTci8I.RzomQt9vyLrjWN9ilaV1.GIghcGq.Iy
+  - username: admin
+    password: $2a$12$eH6Du2grC7aOUDmff2SrC.yKPWea/fq0d76c3JsvhGxhGCEOnWTRy
 ```
 
 After a successful login, paws issues a signed (HMAC-SHA256) token, using the server secret (`tokens.secret` in `config.yml`). This is stored as a cookie and re-used for future authentications.
