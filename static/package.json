@@ -4,9 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "rsbuild dev",
-    "build:web": "rsbuild build",
-    "build:preview": "rsbuild build -c rsbuild.preview.config.js",
-    "build": "bun run build:web && bun run build:preview"
+    "build": "rsbuild build"
   },
   "devDependencies": {
     "@rsbuild/core": "^1.7.2",
