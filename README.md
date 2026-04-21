@@ -10,12 +10,12 @@ paws is a private, self-hosted web interface for generating images via AI models
 - **Private & Self-Hosted**: All your generated images and settings are stored locally in `indexedDB`.
 - **Broad Model Support**: Use any image generation model available on your OpenRouter account.
 - **Real-time Streaming**: Watch images materialize in real-time via streaming generation chunks.
-- **Persistent Settings**: Your chosen model, resolution, aspect ratio, and prompt history are saved between sessions.
+- **Persistent Settings**: Your chosen model, resolution, aspect ratio and prompt history are saved between sessions.
 - **Authentication**: Optional user/password authentication for added security.
 
 ### Generation Control
 - **Reference Images**: Attach up to 4 reference images to guide the generation (vision models).
-- **Resolution & Aspect Ratio**: Explicitly request `1K`, `2K`, or `4K` resolutions and specific aspect ratios (or let the model decide).
+- **Resolution & Aspect Ratio**: Explicitly request `1K`, `2K` or `4K` resolutions and specific aspect ratios (or let the model decide).
 - **System Messages**: Use the built-in optimal system prompt or provide your own custom instructions.
 - **Prompt History**: Your last prompt is saved locally so you can pick up where you left off.
 
@@ -23,10 +23,10 @@ paws is a private, self-hosted web interface for generating images via AI models
 - **Grid Gallery**: View all your generated images in a responsive, dynamic grid.
 - **Image Specifications**: See the requested resolution and calculated aspect ratio directly on the image card.
 - **Advanced Model Selection**:
-  - Pricing badges show costs for `1K`, `2K`, and `4K` generations.
+  - Pricing badges show costs for `1K`, `2K` and `4K` generations.
   - Fuzzy search helps you quickly find the exact model you need.
   - Favorite models and drag-and-drop to reorder them for quick access.
-- **Usage Tracking**: Keep track of your spending with a clickable usage display that cycles through daily, weekly, monthly, and total costs.
+- **Usage Tracking**: Keep track of your spending with a clickable usage display that cycles through daily, weekly, monthly and total costs.
 - **Download & Retry**: Easily download high-resolution results or retry failed generations.
 
 ## Built With
@@ -138,5 +138,5 @@ server {
 - Generate an image with `Ctrl+Enter` or the **Generate Image** button.
 - Attach **Reference Images** by clicking the `+` button or pasting images directly into the prompt area.
 - Hover over a generated image to **download** or **retry** the generation.
-- Click the **Usage Display** in the top left to cycle through daily, weekly, monthly, and total usage costs.
+- Click the **Usage Display** in the top left to cycle through daily, weekly, monthly and total usage costs.
 - Middle-click a model in the dropdown to add it to your **Favorites**.

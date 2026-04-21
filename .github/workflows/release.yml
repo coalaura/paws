@@ -56,7 +56,7 @@ jobs:
         cp -r public build/public
         cp example.config.yml build/config.yml
 
-        tar -czvf build/paws_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz -C build "paws${EXT}" public prompts config.yml
+        tar -czvf build/paws_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz -C build "paws${EXT}" public config.yml
         rm -rf build/public build/config.yml "build/paws${EXT}"
 
     - name: Upload artifact
