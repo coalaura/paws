@@ -13,7 +13,7 @@ require (
 )
 
 require (
-	github.com/coalaura/byteconv v0.0.0-20260219201828-c79809dc218c // indirect
+	github.com/coalaura/byteconv v0.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
