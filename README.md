@@ -70,8 +70,8 @@ tokens:
   openrouter: ""
 
 server:
-  # port to serve paws on (required; default 3443)
-  port: 3443
+  # port to serve paws on (required; default 3444)
+  port: 3444
 
 settings:
   # the http timeout to use for completion requests in seconds (optional; default: 300s)
