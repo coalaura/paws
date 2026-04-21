@@ -268,6 +268,8 @@ async function loadData() {
 
 		if (data.auth && !data.authenticated) {
 			$authentication.classList.add("open");
+
+			return;
 		}
 
 		$model.innerHTML = "";
