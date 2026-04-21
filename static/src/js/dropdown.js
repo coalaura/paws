@@ -1133,6 +1133,16 @@ document.body.addEventListener("click", event => {
 	});
 });
 
+document.addEventListener("click", event => {
+	if (!event.target.closest(".action-btn.more-btn") && !event.target.closest(".job-menu")) {
+		document.querySelectorAll(".job-menu.open").forEach(menu => {
+			menu.classList.remove("open");
+
+			menu.closest(".job-card")?.classList.remove("menu-open");
+		});
+	}
+});
+
 export function dropdown(el, favorites = false, tabs = []) {
 	return new Dropdown(el, favorites, tabs);
 }

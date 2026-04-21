@@ -426,7 +426,6 @@ input:focus {
 	margin-left: 1px;
 	background: transparent;
 	position: relative;
-	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	animation: fadein 0.3s ease;
@@ -532,6 +531,85 @@ input:focus {
 
 .action-btn:hover path {
 	color: var(--c-crust);
+}
+
+.action-btn.more-btn {
+	position: relative;
+}
+
+.job-menu {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	margin-top: 4px;
+	z-index: 30;
+	background: var(--c-mantle);
+	border: 1px solid var(--c-surface1);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+	padding: 4px;
+	min-width: 180px;
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(-4px);
+	transition:
+		opacity 0.15s,
+		visibility 0.15s,
+		transform 0.15s;
+	pointer-events: none;
+}
+
+.job-menu.open {
+	opacity: 1;
+	visibility: visible;
+	transform: translateY(0);
+	pointer-events: auto;
+}
+
+.job-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 13px;
+	color: var(--c-text);
+	transition: background 0.15s;
+	white-space: nowrap;
+}
+
+.job-menu-item:hover {
+	background: var(--c-surface0);
+}
+
+.job-menu-item svg {
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+}
+
+.job-card.menu-open .job-actions {
+	opacity: 1;
+}
+
+.result-image[draggable="true"] {
+	cursor: grab;
+}
+
+.result-image[draggable="true"]:active {
+	cursor: grabbing;
+}
+
+#reference-images.drag-over {
+	outline: 2px dashed var(--c-mauve);
+	outline-offset: -2px;
+	background: color-mix(in srgb, var(--c-mauve) 10%, transparent);
+}
+
+#reference-images.drag-over #add-ref-btn {
+	border-color: var(--c-mauve);
+	color: var(--c-mauve);
 }
 
 .action-btn svg {

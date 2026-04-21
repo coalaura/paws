@@ -4,6 +4,9 @@ import "../css/dropdown.css";
 import deleteSvg from "../css/icons/delete.svg?raw";
 import downloadSvg from "../css/icons/download.svg?raw";
 import retrySvg from "../css/icons/retry.svg?raw";
+import moreSvg from "../css/icons/more.svg?raw";
+import imageSvg from "../css/icons/image.svg?raw";
+import editSvg from "../css/icons/edit.svg?raw";
 
 import { unpack } from "msgpackr";
 
@@ -488,6 +491,44 @@ $fileInput.addEventListener("change", event => {
 	$fileInput.value = ""; // reset
 });
 
+$refImagesContainer.addEventListener("dragover", event => {
+	event.preventDefault();
+
+	event.dataTransfer.dropEffect = "copy";
+
+	$refImagesContainer.classList.add("drag-over");
+});
+
+$refImagesContainer.addEventListener("dragleave", event => {
+	if (!$refImagesContainer.contains(event.relatedTarget)) {
+		$refImagesContainer.classList.remove("drag-over");
+	}
+});
+
+$refImagesContainer.addEventListener("drop", async event => {
+	event.preventDefault();
+
+	$refImagesContainer.classList.remove("drag-over");
+
+	const data = event.dataTransfer.getData("text/plain");
+
+	if (data?.startsWith("data:image")) {
+		if (referenceImages.length < MaxImages) {
+			referenceImages.push(data);
+
+			renderReferenceImages();
+		}
+
+		return;
+	}
+
+	const files = event.dataTransfer.files;
+
+	if (files.length > 0) {
+		await handleFiles(files);
+	}
+});
+
 $prompt.addEventListener("paste", async event => {
 	const items = event.clipboardData?.items;
 
@@ -540,7 +581,9 @@ function createJobDOM(job) {
 	} else if (job.result) {
 		img.src = job.result;
 
-		if (job.status !== "done") {
+		if (job.status === "done") {
+			img.draggable = true;
+		} else {
 			img.classList.add("blurred");
 		}
 	}
@@ -585,9 +628,39 @@ function createJobDOM(job) {
 	retryBtn.innerHTML = retrySvg;
 	retryBtn.title = "Retry";
 
+	const moreBtn = document.createElement("button");
+
+	moreBtn.className = "action-btn more-btn";
+	moreBtn.innerHTML = moreSvg;
+	moreBtn.title = "More actions";
+
+	const menu = document.createElement("div");
+
+	menu.className = "job-menu";
+
+	const useRefItem = document.createElement("div");
+
+	useRefItem.className = "job-menu-item";
+	useRefItem.innerHTML = `${imageSvg} Use as Reference`;
+
+	if (!job.result) {
+		useRefItem.style.opacity = "0.5";
+		useRefItem.style.pointerEvents = "none";
+	}
+
+	const loadSettingsItem = document.createElement("div");
+
+	loadSettingsItem.className = "job-menu-item";
+	loadSettingsItem.innerHTML = `${editSvg} Load Settings`;
+
+	menu.appendChild(useRefItem);
+	menu.appendChild(loadSettingsItem);
+
 	actions.appendChild(closeBtn);
 	actions.appendChild(retryBtn);
 	actions.appendChild(dlBtn);
+	actions.appendChild(moreBtn);
+	actions.appendChild(menu);
 
 	imgContainer.appendChild(img);
 	imgContainer.appendChild(spinner);
@@ -610,13 +683,15 @@ function createJobDOM(job) {
 
 	const aspectBadge = document.createElement("span");
 
-	aspectBadge.className = "spec-badge";
+	aspectBadge.className = "spec-badge hidden";
 
 	specs.appendChild(aspectBadge);
 
 	img.addEventListener("load", () => {
 		if (img.naturalWidth && img.naturalHeight) {
 			aspectBadge.textContent = calculateAspectRatio(img.naturalWidth, img.naturalHeight);
+
+			aspectBadge.classList.remove("hidden");
 		}
 	});
 
@@ -664,10 +739,105 @@ function createJobDOM(job) {
 		closeBtn: closeBtn,
 		dlBtn: dlBtn,
 		retryBtn: retryBtn,
+		moreBtn: moreBtn,
+		menu: menu,
+		useRefItem: useRefItem,
+		loadSettingsItem: loadSettingsItem,
 		$img: img,
 		$spinner: spinner,
 		$error: errorDiv,
 	};
+}
+
+function useAsReference(job) {
+	if (!job.result) {
+		return;
+	}
+
+	if (referenceImages.length >= MaxImages) {
+		console.warn("Maximum reference images reached");
+
+		return;
+	}
+
+	referenceImages.push(job.result);
+
+	renderReferenceImages();
+}
+
+function loadSettings(job) {
+	if (!job.payload) {
+		return;
+	}
+
+	const payload = job.payload;
+
+	if (payload.model) {
+		$model.value = payload.model;
+
+		store("model", payload.model);
+	}
+
+	if (payload.image?.resolution) {
+		$resolution.value = payload.image.resolution;
+
+		store("resolution", payload.image.resolution);
+	}
+
+	if (payload.image?.aspect) {
+		$aspectRatio.value = payload.image.aspect;
+
+		store("aspect", payload.image.aspect);
+	}
+
+	if (payload.system !== undefined) {
+		if (payload.system === SystemPrompt) {
+			$useDefaultSystem.checked = true;
+
+			$systemMessage.disabled = true;
+			$systemMessage.style.opacity = "0.5";
+
+			useDefaultSys = true;
+
+			store("useDefaultSystem", true);
+
+			$systemMessage.value = SystemPrompt;
+
+			store("system", SystemPrompt);
+		} else {
+			$useDefaultSystem.checked = false;
+
+			$systemMessage.disabled = false;
+			$systemMessage.style.opacity = "1";
+
+			useDefaultSys = false;
+
+			store("useDefaultSystem", false);
+
+			$systemMessage.value = payload.system;
+
+			store("customSystem", payload.system);
+			store("system", payload.system);
+		}
+	}
+
+	if (payload.prompt !== undefined) {
+		$prompt.value = payload.prompt;
+
+		store("prompt", payload.prompt);
+	}
+
+	referenceImages = [];
+
+	console.log(payload.images.length);
+
+	if (payload.images && payload.images.length > 0) {
+		const imagesToAdd = payload.images.slice(0, MaxImages);
+
+		referenceImages.push(...imagesToAdd);
+	}
+
+	renderReferenceImages();
 }
 
 function setupJobUI(ui, job, controller = null) {
@@ -717,6 +887,46 @@ function setupJobUI(ui, job, controller = null) {
 		if (isDone && ui.$img.src && typeof openImageModal === "function") {
 			openImageModal(ui.$img.src);
 		}
+	});
+
+	ui.moreBtn.addEventListener("click", event => {
+		event.stopPropagation();
+
+		document.querySelectorAll(".job-menu.open").forEach(mnu => {
+			if (mnu !== ui.menu) {
+				mnu.classList.remove("open");
+
+				mnu.closest(".job-card")?.classList.remove("menu-open");
+			}
+		});
+
+		ui.menu.classList.toggle("open");
+		ui.card.classList.toggle("menu-open", ui.menu.classList.contains("open"));
+	});
+
+	ui.useRefItem.addEventListener("click", () => {
+		useAsReference(job);
+
+		ui.menu.classList.remove("open");
+		ui.card.classList.remove("menu-open");
+	});
+
+	ui.loadSettingsItem.addEventListener("click", () => {
+		loadSettings(job);
+
+		ui.menu.classList.remove("open");
+		ui.card.classList.remove("menu-open");
+	});
+
+	ui.$img.addEventListener("dragstart", event => {
+		if (!isDone || !job.result) {
+			event.preventDefault();
+
+			return;
+		}
+
+		event.dataTransfer.setData("text/plain", job.result);
+		event.dataTransfer.effectAllowed = "copy";
 	});
 
 	return cleanupActions;
@@ -815,6 +1025,13 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 
 					job.result = chunk.data;
 
+					if (ui.useRefItem) {
+						ui.useRefItem.style.opacity = "1";
+						ui.useRefItem.style.pointerEvents = "auto";
+					}
+
+					ui.$img.draggable = true;
+
 					saveJobs();
 
 					break;
@@ -850,8 +1067,8 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 	);
 }
 
-$useDefaultSystem.addEventListener("change", e => {
-	useDefaultSys = e.target.checked;
+$useDefaultSystem.addEventListener("change", event => {
+	useDefaultSys = event.target.checked;
 
 	store("useDefaultSystem", useDefaultSys);
 
