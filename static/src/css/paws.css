@@ -693,6 +693,28 @@ input:focus {
 	opacity: 1;
 }
 
+.job-refs {
+	display: flex;
+	gap: 6px;
+	margin-bottom: 6px;
+}
+
+.job-refs img {
+	width: 24px;
+	height: 24px;
+	border-radius: 4px;
+	object-fit: cover;
+	border: 1px solid var(--c-surface2);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+	cursor: pointer;
+	pointer-events: auto;
+	transition: transform 0.2s;
+}
+
+.job-refs img:hover {
+	transform: scale(1.15);
+}
+
 .job-prompt {
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
@@ -733,7 +755,6 @@ input:focus {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
-	overflow: hidden;
 }
 
 .modal .content {
@@ -783,8 +804,8 @@ input:focus {
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	width: 32px;
-	height: 32px;
+	width: 28px;
+	height: 28px;
 	border: 3px solid var(--c-surface2);
 	border-top-color: var(--c-mauve);
 	border-radius: 50%;

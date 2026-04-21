@@ -701,6 +701,30 @@ function createJobDOM(job) {
 
 	meta.className = "job-meta";
 
+	const refs = job.payload.images || [];
+
+	if (refs.length > 0) {
+		const refsDiv = document.createElement("div");
+
+		refsDiv.className = "job-refs";
+
+		for (const src of refs) {
+			const refImg = document.createElement("img");
+
+			refImg.src = src;
+
+			refImg.addEventListener("click", event => {
+				event.stopPropagation();
+
+				openImageModal(src);
+			});
+
+			refsDiv.appendChild(refImg);
+		}
+
+		meta.appendChild(refsDiv);
+	}
+
 	const promptDiv = document.createElement("div");
 
 	promptDiv.className = "job-prompt";
