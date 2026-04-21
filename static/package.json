@@ -1,0 +1,19 @@
+{
+  "name": "paws",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rsbuild dev",
+    "build:web": "rsbuild build",
+    "build:preview": "rsbuild build -c rsbuild.preview.config.js",
+    "build": "bun run build:web && bun run build:preview"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "^1.7.2",
+    "@rspack/core": "^1.7.2"
+  },
+  "dependencies": {
+    "dexie": "^4.4.2",
+    "msgpackr": "^1.11.8"
+  }
+}

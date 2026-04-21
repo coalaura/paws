@@ -1,0 +1,86 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        goos:   [windows, linux]
+        goarch: [amd64, arm64]
+      fail-fast: false
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: 'go.mod'
+
+    - name: Set up Bun
+      uses: oven-sh/setup-bun@v2
+
+    - name: Build Frontend
+      run: |
+        cd static
+        bun install
+        bun run build
+        cd ..
+        mv static/dist public
+
+    - name: Build ${{ matrix.goos }}_${{ matrix.goarch }}
+      shell: bash
+      run: |
+        mkdir -p build
+        [[ "${{ matrix.goos }}" == "windows" ]] && EXT=".exe" || EXT=""
+
+        GOOS=${{ matrix.goos }} \
+        GOARCH=${{ matrix.goarch }} \
+        CGO_ENABLED=0 \
+        go build \
+          -trimpath \
+          -buildvcs=false \
+          -ldflags "-s -w -X 'main.Version=${{ github.ref_name }}'" \
+          -o "build/paws${EXT}" .
+
+        cp -r public build/public
+        cp example.config.yml build/config.yml
+
+        tar -czvf build/paws_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz -C build "paws${EXT}" public prompts config.yml
+        rm -rf build/public build/config.yml "build/paws${EXT}"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v6
+      with:
+        name: paws_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz
+        path: build/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Download all build artifacts
+      uses: actions/download-artifact@v8
+      with:
+        path: ./build
+
+    - name: Create GitHub release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ./build/**
+        name: "Release ${{ github.ref_name }}"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

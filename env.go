@@ -1,0 +1,218 @@
+package main
+
+import (
+	"bytes"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+	"sync"
+
+	"github.com/goccy/go-yaml"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type EnvTokens struct {
+	Secret     string `yaml:"secret"`
+	OpenRouter string `yaml:"openrouter"`
+}
+
+type EnvServer struct {
+	Port int64 `yaml:"port"`
+}
+
+type EnvSettings struct {
+	Timeout         int64 `yaml:"timeout"`
+	RefreshInterval int64 `yaml:"refresh-interval"`
+}
+
+type EnvUser struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+}
+
+type EnvAuthentication struct {
+	lookup map[string]*EnvUser
+
+	Enabled bool       `yaml:"enabled"`
+	Users   []*EnvUser `yaml:"users"`
+}
+
+type Environment struct {
+	dmx sync.RWMutex // data mutex
+	fmx sync.Mutex   // file mutex
+
+	Debug          bool              `yaml:"debug"`
+	Tokens         EnvTokens         `yaml:"tokens"`
+	Server         EnvServer         `yaml:"server"`
+	Settings       EnvSettings       `yaml:"settings"`
+	Authentication EnvAuthentication `yaml:"authentication"`
+}
+
+func LoadEnv() (*Environment, error) {
+	// defaults
+	cfg := &Environment{
+		Server: EnvServer{
+			Port: 3444,
+		},
+		Settings: EnvSettings{
+			Timeout:         1200,
+			RefreshInterval: 30,
+		},
+	}
+
+	file, err := os.OpenFile("config.yml", os.O_RDONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	err = yaml.NewDecoder(file).Decode(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cfg.Init()
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func (e *Environment) Addr() string {
+	return fmt.Sprintf(":%d", e.Server.Port)
+}
+
+func (e *Environment) Init() error {
+	var store bool
+
+	// print if debug is enabled
+	if e.Debug {
+		log.Warnln("Debug mode enabled")
+	}
+
+	// check if server secret is set
+	if e.Tokens.Secret == "" {
+		log.Warnln("Missing tokens.secret, generating new")
+
+		secret, err := CreateSecret(32)
+		if err != nil {
+			return err
+		}
+
+		e.Tokens.Secret = secret
+
+		store = true
+	}
+
+	// check if openrouter token is set
+	if e.Tokens.OpenRouter == "" {
+		return errors.New("missing tokens.openrouter")
+	}
+
+	// check if port is valid
+	if e.Server.Port <= 0 || e.Server.Port >= 65535 {
+		return fmt.Errorf("invalid port %d", e.Server.Port)
+	}
+
+	// default timeout
+	if e.Settings.Timeout <= 0 {
+		e.Settings.Timeout = 300
+	}
+
+	// default model refresh interval
+	if e.Settings.RefreshInterval <= 0 {
+		e.Settings.RefreshInterval = 30
+	}
+
+	// make it harder to disable auth accidentally
+	if !e.Authentication.Enabled && len(e.Authentication.Users) > 0 {
+		return errors.New("authentication disabled but users defined")
+	}
+
+	// create user lookup map
+	e.Authentication.lookup = make(map[string]*EnvUser)
+
+	for _, user := range e.Authentication.Users {
+		if strings.HasPrefix(user.Password, "text=") {
+			log.Warnf("User %q has plaintext password, generating hash\n", user.Username)
+
+			hash, err := bcrypt.GenerateFromPassword([]byte(user.Password[5:]), bcrypt.DefaultCost)
+			if err != nil {
+				return err
+			}
+
+			user.Password = string(hash)
+
+			store = true
+		}
+
+		e.Authentication.lookup[user.Username] = user
+	}
+
+	if store {
+		if err := e.Store(); err != nil {
+			return err
+		}
+
+		log.Println("Updated config.yml")
+	}
+
+	return nil
+}
+
+func (e *Environment) Store() error {
+	var (
+		buffer   bytes.Buffer
+		comments = yaml.CommentMap{
+			"$.debug": {yaml.HeadComment(" enable verbose logging and diagnostics")},
+
+			"$.tokens":         {yaml.HeadComment("")},
+			"$.server":         {yaml.HeadComment("")},
+			"$.settings":       {yaml.HeadComment("")},
+			"$.authentication": {yaml.HeadComment("")},
+
+			"$.tokens.secret":     {yaml.HeadComment(" server secret for signing auth tokens; auto-generated if empty")},
+			"$.tokens.openrouter": {yaml.HeadComment(" openrouter.ai api token (required)")},
+
+			"$.server.port": {yaml.HeadComment(" port to serve paws on (required; default 3443)")},
+
+			"$.settings.timeout":          {yaml.HeadComment(" the http timeout to use for completion requests in seconds (optional; default: 300s)")},
+			"$.settings.refresh-interval": {yaml.HeadComment(" the interval in which the model list is refreshed in minutes (optional; default: 30m)")},
+
+			"$.authentication.enabled": {yaml.HeadComment(" require login with username and password")},
+			"$.authentication.users":   {yaml.HeadComment(" list of users with bcrypt password hashes")},
+		}
+	)
+
+	e.dmx.RLock()
+	err := yaml.NewEncoder(&buffer, yaml.WithComment(comments)).Encode(e)
+	e.dmx.RUnlock()
+
+	if err != nil {
+		return err
+	}
+
+	body := bytes.ReplaceAll(buffer.Bytes(), []byte("#\n"), []byte("\n"))
+
+	e.fmx.Lock()
+	defer e.fmx.Unlock()
+
+	return os.WriteFile("config.yml", body, 0644)
+}
+
+func CreateSecret(length int) (string, error) {
+	key := make([]byte, length)
+
+	_, err := io.ReadFull(rand.Reader, key)
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(key), nil
+}
