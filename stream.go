@@ -18,6 +18,7 @@ const (
 	ChunkError ChunkType = 2
 	ChunkEnd   ChunkType = 3
 	ChunkAlive ChunkType = 4
+	ChunkUsage ChunkType = 5
 )
 
 type ChunkType uint8

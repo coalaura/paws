@@ -234,6 +234,7 @@ func RunCompletion(ctx context.Context, response *Stream, request *openrouter.Ch
 		hasContent bool
 		finish     openrouter.FinishReason
 		native     string
+		cost       float64 = -1
 	)
 
 	for {
@@ -244,6 +245,12 @@ func RunCompletion(ctx context.Context, response *Stream, request *openrouter.Ch
 			}
 
 			return fmt.Errorf("stream.receive: %v", err)
+		}
+
+		if chunk.Usage != nil {
+			debug("usage chunk: model=%q provider=%q prompt=%d completion=%d cost=%f", chunk.Model, chunk.Provider, chunk.Usage.PromptTokens, chunk.Usage.CompletionTokens, chunk.Usage.Cost)
+
+			cost = chunk.Usage.Cost
 		}
 
 		if len(chunk.Choices) == 0 {
@@ -278,6 +285,10 @@ func RunCompletion(ctx context.Context, response *Stream, request *openrouter.Ch
 
 	if finish == "" && !hasContent {
 		response.WriteChunk(NewChunk(ChunkError, errors.New("no content returned")))
+	}
+
+	if cost != -1 {
+		response.WriteChunk(NewChunk(ChunkUsage, cost))
 	}
 
 	response.WriteChunk(NewChunk(ChunkEnd, nil))
