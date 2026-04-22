@@ -515,6 +515,16 @@ input:focus {
 	text-overflow: ellipsis;
 }
 
+.cost-badge {
+	margin-left: auto;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	color: var(--c-subtext1);
+	font-size: 11px;
+	letter-spacing: 0.5px;
+	font-weight: 500;
+	flex-shrink: 0;
+}
+
 .model-provider-icon {
 	width: 16px;
 	height: 16px;

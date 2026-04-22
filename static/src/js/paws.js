@@ -463,22 +463,13 @@ function createJobDOM(job) {
 	const aspectBadge = document.createElement("span");
 
 	aspectBadge.className = "spec-badge hidden";
+
 	specs.appendChild(aspectBadge);
-
-	const costBadge = document.createElement("span");
-
-	costBadge.className = "spec-badge hidden";
-
-	if (job.cost) {
-		costBadge.textContent = formatMoney(job.cost);
-		costBadge.classList.remove("hidden");
-	}
-
-	specs.appendChild(costBadge);
 
 	img.addEventListener("load", () => {
 		if (img.naturalWidth && img.naturalHeight) {
 			aspectBadge.textContent = calculateAspectRatio(img.naturalWidth, img.naturalHeight);
+
 			aspectBadge.classList.remove("hidden");
 		}
 	});
@@ -532,7 +523,19 @@ function createJobDOM(job) {
 	const modelLabel = document.createElement("span");
 
 	modelLabel.textContent = modelName;
+
 	modelIndicator.appendChild(modelLabel);
+
+	const costBadge = document.createElement("span");
+
+	costBadge.className = "cost-badge hidden";
+
+	if (job.cost) {
+		costBadge.textContent = formatMoney(job.cost);
+		costBadge.classList.remove("hidden");
+	}
+
+	modelIndicator.appendChild(costBadge);
 
 	meta.appendChild(modelIndicator);
 
@@ -1242,6 +1245,8 @@ if (referenceImages.length > 0) {
 	renderReferenceImages();
 }
 
+await loadData();
+
 for (let i = jobs.length - 1; i >= 0; i--) {
 	const job = jobs[i];
 
@@ -1256,8 +1261,6 @@ for (let i = jobs.length - 1; i >= 0; i--) {
 
 	setupJobUI(ui, job);
 }
-
-await loadData();
 
 fetchUsage();
 
