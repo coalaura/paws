@@ -48,6 +48,7 @@ const $loader = document.getElementById("global-loader"),
 
 let referenceImages = load("referenceImages", []),
 	jobs = load("jobs", []),
+	modelsData = [],
 	currentUsageType = load("usageType", "daily"),
 	currentUsageData = null,
 	useDefaultSys = load("useDefaultSystem", false);
@@ -284,6 +285,8 @@ async function loadData() {
 		}
 
 		if (data.models && data.models.length > 0) {
+			modelsData = data.models;
+
 			for (const model of data.models) {
 				const option = document.createElement("option");
 
@@ -724,6 +727,30 @@ function createJobDOM(job) {
 
 		meta.appendChild(refsDiv);
 	}
+
+	const selectedModel = modelsData.find(mdl => mdl.id === job.payload.model),
+		modelName = selectedModel?.name || job.payload.model,
+		modelAuthor = selectedModel?.author;
+
+	const modelIndicator = document.createElement("div");
+
+	modelIndicator.className = "job-model";
+
+	if (modelAuthor) {
+		const modelIcon = document.createElement("img");
+
+		modelIcon.src = `/labs/${modelAuthor}.png`;
+		modelIcon.className = "model-provider-icon";
+
+		modelIndicator.appendChild(modelIcon);
+	}
+
+	const modelLabel = document.createElement("span");
+
+	modelLabel.textContent = modelName;
+	modelIndicator.appendChild(modelLabel);
+
+	meta.appendChild(modelIndicator);
 
 	const promptDiv = document.createElement("div");
 

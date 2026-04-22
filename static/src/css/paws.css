@@ -498,6 +498,31 @@ input:focus {
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.job-model {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 11px;
+	color: var(--c-subtext0);
+	margin-bottom: 4px;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.job-model span {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.model-provider-icon {
+	width: 16px;
+	height: 16px;
+	border-radius: 3px;
+	object-fit: contain;
+	flex-shrink: 0;
+}
+
 .action-btn {
 	background: rgba(36, 39, 58, 0.8);
 	backdrop-filter: blur(4px);
