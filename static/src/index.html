@@ -81,7 +81,18 @@
 				</div>
 
 				<div class="form-group">
-					<label>Reference Images <span id="ref-count">(0/4)</span></label>
+					<div class="label-row" id="ref-images-header">
+						<label>Reference Images <span id="ref-count">(0/4)</span></label>
+
+						<div class="max-ref-wrapper">
+							<select id="max-ref-resolution">
+								<option value="0">Original</option>
+								<option value="1024">Max 1K</option>
+								<option value="2048">Max 2K</option>
+								<option value="4096">Max 4K</option>
+							</select>
+						</div>
+					</div>
 
 					<div id="reference-images" data-total="1">
 						<button id="add-ref-btn" title="Add reference image"></button>

@@ -269,6 +269,48 @@ input:focus {
 	font-style: italic;
 }
 
+.max-ref-wrapper {
+	width: 95px;
+}
+
+#ref-images-header {
+	margin-bottom: 8px;
+	align-items: center;
+}
+
+#ref-images-header .dropdown {
+	border-color: var(--c-surface1);
+	background: transparent;
+	box-shadow: none;
+	border-radius: 6px;
+}
+
+#ref-images-header .dropdown:hover {
+	border-color: var(--c-surface2);
+	background: var(--c-surface0);
+}
+
+#ref-images-header .dropdown .selected {
+	padding: 5px 8px;
+	font-size: 11px;
+	color: var(--c-text);
+	font-weight: 500;
+}
+
+#ref-images-header .dropdown .selected::after {
+	width: 12px;
+	height: 12px;
+}
+
+#ref-images-header .dropdown.open {
+	background: var(--c-mantle);
+	border-color: var(--c-surface2);
+}
+
+#ref-images-header .dropdown.open .selected {
+	color: var(--c-text);
+}
+
 #reference-images {
 	display: grid;
 	gap: 12px;
@@ -515,8 +557,22 @@ input:focus {
 	text-overflow: ellipsis;
 }
 
-.cost-badge {
+.job-timer {
+	font-variant-numeric: tabular-nums;
+}
+
+.meta-timer {
 	margin-left: auto;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	color: var(--c-subtext1);
+	font-size: 11px;
+	letter-spacing: 0.5px;
+	font-weight: 500;
+	flex-shrink: 0;
+}
+
+.cost-badge {
+	margin-left: 6px;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	color: var(--c-subtext1);
 	font-size: 11px;
@@ -752,6 +808,7 @@ input:focus {
 
 .job-prompt {
 	display: -webkit-box;
+	line-clamp: 2;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
 	overflow: hidden;

@@ -62,11 +62,13 @@ const $loader = document.getElementById("global-loader"),
 	$imageModal = document.getElementById("image-modal"),
 	$fullImage = document.getElementById("full-image"),
 	$closeImageModal = document.getElementById("close-image-modal"),
-	$usageDisplay = document.getElementById("usage-display");
+	$usageDisplay = document.getElementById("usage-display"),
+	$maxRefResolution = document.getElementById("max-ref-resolution");
 
 await connectDB();
 
-let referenceImages = load("referenceImages", []),
+let rawRefs = load("referenceImages", []),
+	referenceImages = rawRefs.map(item => (typeof item === "string" ? { original: item, processed: item } : item)),
 	jobs = load("jobs", []),
 	modelsData = [],
 	currentUsageType = load("usageType", "daily"),
@@ -87,6 +89,7 @@ if (useDefaultSys) {
 $prompt.value = load("prompt", "");
 $resolution.value = load("resolution", "");
 $aspectRatio.value = load("aspect", "2K");
+$maxRefResolution.value = load("maxRefResolution", "0");
 
 export function fixed(num, decimals = 0) {
 	return num.toFixed(decimals).replace(/\.?0+$/m, "");
@@ -114,6 +117,24 @@ export function formatMoney(num) {
 	return `$${fixed(num, 2)}`;
 }
 
+function formatDuration(ms) {
+	const totalSeconds = Math.floor(ms / 1000);
+
+	if (totalSeconds < 60) {
+		return `${totalSeconds}s`;
+	}
+
+	const hours = Math.floor(totalSeconds / 3600),
+		minutes = Math.floor((totalSeconds % 3600) / 60),
+		seconds = totalSeconds % 60;
+
+	if (hours > 0) {
+		return `${hours}h ${minutes}m`;
+	}
+
+	return `${minutes}m ${seconds}s`;
+}
+
 function calculateAspectRatio(width, height) {
 	const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b)),
 		d = gcd(width, height);
@@ -139,6 +160,42 @@ function readFileAsDataUrl(file) {
 		reader.onerror = reject;
 
 		reader.readAsDataURL(file);
+	});
+}
+
+function processRefImage(dataUrl) {
+	return new Promise(resolve => {
+		const maxRes = parseInt($maxRefResolution.value, 10) || 0,
+			img = new Image();
+
+		img.onload = () => {
+			let width = img.naturalWidth,
+				height = img.naturalHeight;
+
+			if (maxRes > 0) {
+				const maxDim = Math.max(width, height);
+
+				if (maxDim > maxRes) {
+					const scale = maxRes / maxDim;
+
+					width = Math.round(width * scale);
+					height = Math.round(height * scale);
+				}
+			}
+
+			const canvas = document.createElement("canvas");
+
+			canvas.width = width;
+			canvas.height = height;
+
+			const ctx = canvas.getContext("2d");
+
+			ctx.drawImage(img, 0, 0, width, height);
+
+			resolve(canvas.toDataURL("image/jpeg", 0.92));
+		};
+
+		img.src = dataUrl;
 	});
 }
 
@@ -191,14 +248,14 @@ function updateAvailableResolutions() {
 function renderReferenceImages() {
 	$refImagesContainer.querySelectorAll(".ref-img-wrapper").forEach(el => el.remove());
 
-	referenceImages.forEach((dataUrl, index) => {
+	referenceImages.forEach((item, index) => {
 		const wrapper = document.createElement("div");
 
 		wrapper.className = "ref-img-wrapper";
 
 		const img = document.createElement("img");
 
-		img.src = dataUrl;
+		img.src = item.processed || item.original;
 
 		wrapper.appendChild(img);
 
@@ -241,15 +298,16 @@ async function handleFiles(files) {
 			continue;
 		}
 
-		const dataUrl = await readFileAsDataUrl(file);
+		const dataUrl = await readFileAsDataUrl(file),
+			processed = await processRefImage(dataUrl);
 
-		referenceImages.push(dataUrl);
+		referenceImages.push({ original: dataUrl, processed: processed });
 	}
 
 	renderReferenceImages();
 }
 
-function useAsReference(job) {
+async function useAsReference(job) {
 	if (!job.result) {
 		return;
 	}
@@ -259,7 +317,9 @@ function useAsReference(job) {
 		return;
 	}
 
-	referenceImages.push(job.result);
+	const processed = await processRefImage(job.result);
+
+	referenceImages.push({ original: job.result, processed: processed });
 
 	renderReferenceImages();
 }
@@ -331,7 +391,7 @@ function loadSettings(job) {
 	if (payload.images && payload.images.length > 0) {
 		const imagesToAdd = payload.images.slice(0, MaxImages);
 
-		referenceImages.push(...imagesToAdd);
+		referenceImages.push(...imagesToAdd.map(img => ({ original: img, processed: img })));
 	}
 
 	renderReferenceImages();
@@ -526,6 +586,20 @@ function createJobDOM(job) {
 
 	modelIndicator.appendChild(modelLabel);
 
+	const timerBadge = document.createElement("span");
+
+	timerBadge.className = "job-timer meta-timer";
+
+	if (job.duration) {
+		timerBadge.textContent = formatDuration(job.duration);
+	} else if (job.startedAt && job.status === "pending") {
+		timerBadge.textContent = formatDuration(Date.now() - job.startedAt);
+	} else {
+		timerBadge.classList.add("hidden");
+	}
+
+	modelIndicator.appendChild(timerBadge);
+
 	const costBadge = document.createElement("span");
 
 	costBadge.className = "cost-badge hidden";
@@ -585,10 +659,11 @@ function createJobDOM(job) {
 		$spinner: spinner,
 		$error: errorDiv,
 		$cost: costBadge,
+		$timer: timerBadge,
 	};
 }
 
-function setupJobUI(ui, job, controller = null) {
+function setupJobUI(ui, job, controller = null, clearTimer = null) {
 	let isDone = job.status !== "pending";
 
 	const cleanupActions = () => {
@@ -599,6 +674,10 @@ function setupJobUI(ui, job, controller = null) {
 	};
 
 	ui.closeBtn.addEventListener("click", () => {
+		if (clearTimer) {
+			clearTimer();
+		}
+
 		if (!isDone && controller) {
 			controller.abort();
 		}
@@ -611,6 +690,10 @@ function setupJobUI(ui, job, controller = null) {
 	});
 
 	ui.retryBtn.addEventListener("click", () => {
+		if (clearTimer) {
+			clearTimer();
+		}
+
 		if (!isDone && controller) {
 			controller.abort();
 		}
@@ -778,12 +861,14 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 		job.result = null;
 		job.error = null;
 		job.cost = null;
+		job.startedAt = Date.now();
+		job.duration = null;
 	} else {
 		const payload = {
 			model: $model.value,
 			system: $systemMessage.value.trim(),
 			prompt: $prompt.value.trim(),
-			images: [...referenceImages],
+			images: referenceImages.map(img => img.processed || img),
 			image: {
 				resolution: $resolution.value,
 				aspect: $aspectRatio.value,
@@ -800,6 +885,7 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 			status: "pending",
 			result: null,
 			error: null,
+			startedAt: Date.now(),
 		};
 
 		jobs.unshift(job);
@@ -816,7 +902,21 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 	}
 
 	const controller = new AbortController(),
-		cleanupActions = setupJobUI(ui, job, controller);
+		startTime = job.startedAt;
+
+	const timerInterval = setInterval(() => {
+		ui.$timer.textContent = formatDuration(Date.now() - startTime);
+		ui.$timer.classList.remove("hidden");
+	}, 1000);
+
+	ui.$timer.textContent = formatDuration(0);
+	ui.$timer.classList.remove("hidden");
+
+	const clearTimer = () => {
+		clearInterval(timerInterval);
+	};
+
+	const cleanupActions = setupJobUI(ui, job, controller, clearTimer);
 
 	stream(
 		"/-/image",
@@ -831,6 +931,12 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 				cleanupActions();
 
 				ui.$img.classList.remove("blurred");
+
+				clearTimer();
+
+				job.duration = Date.now() - startTime;
+
+				ui.$timer.textContent = formatDuration(job.duration);
 
 				if (chunk === "done" && !ui.$img.classList.contains("hidden")) {
 					ui.dlBtn.classList.remove("hidden");
@@ -875,6 +981,12 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 				case "end":
 					cleanupActions();
 
+					clearTimer();
+
+					job.duration = Date.now() - startTime;
+
+					ui.$timer.textContent = formatDuration(job.duration);
+
 					ui.$img.classList.remove("blurred");
 					ui.dlBtn.classList.remove("hidden");
 
@@ -887,6 +999,12 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 					break;
 				case "error":
 					cleanupActions();
+
+					clearTimer();
+
+					job.duration = Date.now() - startTime;
+
+					ui.$timer.textContent = formatDuration(job.duration);
 
 					ui.card.classList.add("errored");
 
@@ -1135,7 +1253,12 @@ $refImagesContainer.addEventListener("drop", async event => {
 
 	if (data?.startsWith("data:image")) {
 		if (referenceImages.length < MaxImages) {
-			referenceImages.push(data);
+			const processed = await processRefImage(data);
+
+			referenceImages.push({
+				original: data,
+				processed: processed,
+			});
 
 			renderReferenceImages();
 		}
@@ -1227,6 +1350,18 @@ $aspectRatio.addEventListener("change", () => {
 	store("aspect", $aspectRatio.value);
 });
 
+$maxRefResolution.addEventListener("change", async () => {
+	store("maxRefResolution", $maxRefResolution.value);
+
+	if (referenceImages.length > 0) {
+		for (const referenceImage of referenceImages) {
+			referenceImage.processed = await processRefImage(referenceImage.original);
+		}
+
+		renderReferenceImages();
+	}
+});
+
 $generateBtn.addEventListener("click", () => startGenerationJob());
 
 $imageModal.querySelector(".background").addEventListener("click", () => {
@@ -1240,6 +1375,7 @@ $closeImageModal.addEventListener("click", () => {
 resDropdown = dropdown($resolution);
 
 dropdown($aspectRatio);
+dropdown($maxRefResolution);
 
 if (referenceImages.length > 0) {
 	renderReferenceImages();
