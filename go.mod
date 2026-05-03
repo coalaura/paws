@@ -7,7 +7,7 @@ require (
 	github.com/coalaura/plain v1.4.3
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/goccy/go-yaml v1.19.2
-	github.com/revrost/go-openrouter v1.2.0
+	github.com/revrost/go-openrouter v1.3.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 	golang.org/x/crypto v0.50.0
 )
