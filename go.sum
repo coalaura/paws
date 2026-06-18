@@ -1,13 +1,13 @@
 github.com/coalaura/byteconv v0.1.0 h1:LSS0zi3STk/y81YNrjkv9OKwZZ1CS5TcOmM1JfIWQYQ=
 github.com/coalaura/byteconv v0.1.0/go.mod h1:0UH4yRUmQnRcvT8amAaLDpasKBPWxkmDKaHVnI3sn5k=
-github.com/coalaura/openingrouter v0.1.0 h1:GcDVAapC9WEWKmpuQrniVgkXiLmDH8eBfDzbDhAU3iA=
-github.com/coalaura/openingrouter v0.1.0/go.mod h1:C3GfmNDQLbBU+R3hcScNNytuZaAvOWbQZsDgQKe4MUQ=
+github.com/coalaura/openingrouter v0.2.0 h1:rUUoSbsPOtutOqCnY1+AmfD8K4YUW/KWUdqAIDXnqd8=
+github.com/coalaura/openingrouter v0.2.0/go.mod h1:C3GfmNDQLbBU+R3hcScNNytuZaAvOWbQZsDgQKe4MUQ=
 github.com/coalaura/plain v1.4.3 h1:BKup0c+61D0HJPwYM9ddh+3CsHzMXWg6vGhRP/mmVXc=
 github.com/coalaura/plain v1.4.3/go.mod h1:jcMR/C9RDdl8EQOHD4d/u8DoO1AI00fLDJfdfmrCFNA=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
-github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
+github.com/felixge/httpsnoop v1.1.0 h1:3YtUj32ZZkqZtt3sZZsClsymw/QDuVfpNhoA31zeORc=
+github.com/felixge/httpsnoop v1.1.0/go.mod h1:Zqxgdd+1Rkcz8euOqdr7lqgCRJztwr5hp9vDSi5UZCE=
 github.com/go-chi/chi/v5 v5.3.0 h1:halUjDxhshgXHMrao5bB8eNBXo/rnzwr8m5m36glehM=
 github.com/go-chi/chi/v5 v5.3.0/go.mod h1:R+tYY2hNuVUUjxoPtqUdgBqevM9s9njzkTLutVsOCto=
 github.com/goccy/go-yaml v1.19.2 h1:PmFC1S6h8ljIz6gMRBopkjP1TVT7xuwrButHID66PoM=
