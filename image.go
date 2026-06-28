@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/revrost/go-openrouter"
@@ -25,32 +28,8 @@ type ChatRequest struct {
 	Images []string    `json:"images"`
 }
 
-var (
-	nativeFinishReasons = map[string]string{
-		// Google / Gemini Models
-		"STOP": "",
-
-		"FINISH_REASON_UNSPECIFIED": "unknown reason",
-		"MAX_TOKENS":                "token limit reached",
-		"OTHER":                     "unknown reason",
-		"SAFETY":                    "safety filter",
-		"BLOCKLIST":                 "blocklist trigger",
-		"PROHIBITED_CONTENT":        "prohibited content",
-		"SPII":                      "sensitive info (PII) filter",
-		"RECITATION":                "copyright/recitation filter",
-		"MODEL_ARMOR":               "security filter (Model Armor)",
-		"IMAGE_SAFETY":              "image safety filter",
-		"IMAGE_PROHIBITED_CONTENT":  "prohibited image content",
-		"IMAGE_RECITATION":          "image recitation filter",
-		"IMAGE_OTHER":               "unknown image error",
-		"NO_IMAGE":                  "failed to generate image",
-		"MALFORMED_FUNCTION_CALL":   "invalid function call",
-		"UNEXPECTED_TOOL_CALL":      "unexpected tool call",
-	}
-)
-
-func (r *ChatRequest) Parse() (*openrouter.ChatCompletionRequest, error) {
-	var request openrouter.ChatCompletionRequest
+func (r *ChatRequest) Parse() (*openrouter.ImageGenerationRequest, error) {
+	var request openrouter.ImageGenerationRequest
 
 	model := GetModel(r.Model)
 	if model == nil {
@@ -59,87 +38,83 @@ func (r *ChatRequest) Parse() (*openrouter.ChatCompletionRequest, error) {
 
 	request.Model = r.Model
 
-	request.Modalities = []openrouter.ChatCompletionModality{
-		openrouter.ModalityImage,
+	prompt := r.Prompt
+	if r.System != "" {
+		if prompt != "" {
+			prompt = r.System + "\n" + prompt
+		} else {
+			prompt = r.System
+		}
 	}
 
-	request.ImageConfig = &openrouter.ChatCompletionImageConfig{
-		ImageSize: openrouter.ImageSize1K,
+	if prompt == "" {
+		return nil, errors.New("missing prompt or system")
 	}
+	request.Prompt = prompt
 
 	switch r.Image.Resolution {
+	case "512":
+		request.Resolution = openrouter.ImageResolution512
 	case "2K":
-		request.ImageConfig.ImageSize = openrouter.ImageSize2K
+		request.Resolution = openrouter.ImageResolution2K
 	case "4K":
-		request.ImageConfig.ImageSize = openrouter.ImageSize4K
+		request.Resolution = openrouter.ImageResolution4K
+	default:
+		request.Resolution = openrouter.ImageResolution1K
 	}
 
 	switch r.Image.Aspect {
 	case "1:1":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio1x1
+		request.AspectRatio = openrouter.ImageAspectRatio1x1
+	case "1:2":
+		request.AspectRatio = openrouter.ImageAspectRatio1x2
+	case "1:4":
+		request.AspectRatio = openrouter.ImageAspectRatio1x4
+	case "1:8":
+		request.AspectRatio = openrouter.ImageAspectRatio1x8
+	case "2:1":
+		request.AspectRatio = openrouter.ImageAspectRatio2x1
 	case "2:3":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio2x3
+		request.AspectRatio = openrouter.ImageAspectRatio2x3
 	case "3:2":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio3x2
+		request.AspectRatio = openrouter.ImageAspectRatio3x2
 	case "3:4":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio3x4
+		request.AspectRatio = openrouter.ImageAspectRatio3x4
+	case "4:1":
+		request.AspectRatio = openrouter.ImageAspectRatio4x1
 	case "4:3":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio4x3
+		request.AspectRatio = openrouter.ImageAspectRatio4x3
 	case "4:5":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio4x5
+		request.AspectRatio = openrouter.ImageAspectRatio4x5
 	case "5:4":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio5x4
+		request.AspectRatio = openrouter.ImageAspectRatio5x4
+	case "8:1":
+		request.AspectRatio = openrouter.ImageAspectRatio8x1
 	case "9:16":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio9x16
+		request.AspectRatio = openrouter.ImageAspectRatio9x16
 	case "16:9":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio16x9
+		request.AspectRatio = openrouter.ImageAspectRatio16x9
 	case "21:9":
-		request.ImageConfig.AspectRatio = openrouter.AspectRatio21x9
+		request.AspectRatio = openrouter.ImageAspectRatio21x9
+	default:
+		request.AspectRatio = openrouter.ImageAspectRatioAuto
 	}
 
-	request.Temperature = 0.85
-
-	if r.Prompt == "" && r.System == "" {
-		return nil, errors.New("missing prompt or system")
-	}
-
-	if r.System != "" {
-		request.Messages = append(request.Messages, openrouter.SystemMessage(r.System))
-	}
-
-	user := openrouter.ChatCompletionMessage{
-		Role: openrouter.ChatMessageRoleUser,
-	}
-
-	for _, image := range r.Images {
-		user.Content.Multi = append(user.Content.Multi, openrouter.ChatMessagePart{
-			Type: openrouter.ChatMessagePartTypeImageURL,
-			ImageURL: &openrouter.ChatMessageImageURL{
-				URL:    image,
-				Detail: openrouter.ImageURLDetailAuto,
+	for _, img := range r.Images {
+		request.InputReferences = append(request.InputReferences, openrouter.ImageInputReference{
+			ImageURL: openrouter.ImageURLRef{
+				URL: img,
 			},
 		})
 	}
 
-	if r.Prompt != "" {
-		user.Content.Multi = append(user.Content.Multi, openrouter.ChatMessagePart{
-			Type: openrouter.ChatMessagePartTypeText,
-			Text: r.Prompt,
-		})
-	}
-
-	if len(user.Content.Multi) > 0 {
-		request.Messages = append(request.Messages, user)
-	}
-
-	request.Stream = true
-
-	request.Usage = &openrouter.IncludeUsage{Include: true}
+	streamEnabled := true
+	request.Stream = &streamEnabled
 
 	return &request, nil
 }
 
-func ParseChatRequest(r *http.Request) (*openrouter.ChatCompletionRequest, error) {
+func ParseChatRequest(r *http.Request) (*openrouter.ImageGenerationRequest, error) {
 	var raw ChatRequest
 
 	err := json.NewDecoder(r.Body).Decode(&raw)
@@ -222,8 +197,8 @@ func HandleImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RunCompletion(ctx context.Context, response *Stream, request *openrouter.ChatCompletionRequest) error {
-	stream, err := OpenRouterStartStream(ctx, *request)
+func RunCompletion(ctx context.Context, response *Stream, request *openrouter.ImageGenerationRequest) error {
+	stream, err := OpenRouterStartImageStream(ctx, *request)
 	if err != nil {
 		return fmt.Errorf("stream.start: %v", err)
 	}
@@ -232,8 +207,6 @@ func RunCompletion(ctx context.Context, response *Stream, request *openrouter.Ch
 
 	var (
 		hasContent bool
-		finish     openrouter.FinishReason
-		native     string
 		cost       float64 = -1
 	)
 
@@ -248,42 +221,28 @@ func RunCompletion(ctx context.Context, response *Stream, request *openrouter.Ch
 		}
 
 		if chunk.Usage != nil {
-			debug("usage chunk: model=%q provider=%q prompt=%d completion=%d cost=%f", chunk.Model, chunk.Provider, chunk.Usage.PromptTokens, chunk.Usage.CompletionTokens, chunk.Usage.Cost)
+			debug("usage chunk: prompt=%d completion=%d cost=%v", chunk.Usage.PromptTokens, chunk.Usage.CompletionTokens, chunk.Usage.Cost)
 
-			cost = chunk.Usage.Cost
+			if chunk.Usage.Cost != nil {
+				cost = *chunk.Usage.Cost
+			}
 		}
 
-		if len(chunk.Choices) == 0 {
-			continue
-		}
+		if chunk.B64JSON != "" {
+			imageURL := chunk.B64JSON
+			if !strings.HasPrefix(imageURL, "data:") {
+				mimeType := mimeTypeFromBase64(chunk.B64JSON)
 
-		choice := chunk.Choices[0]
-		delta := choice.Delta
-
-		if choice.FinishReason != "" {
-			finish = choice.FinishReason
-		}
-
-		if choice.NativeFinishReason != "" {
-			native = choice.NativeFinishReason
-		}
-
-		for _, image := range delta.Images {
-			if image.Type != openrouter.StreamImageTypeImageURL {
-				continue
+				imageURL = "data:" + mimeType + ";base64," + chunk.B64JSON
 			}
 
-			response.WriteChunk(NewChunk(ChunkImage, image.ImageURL.URL))
+			response.WriteChunk(NewChunk(ChunkImage, imageURL))
 
 			hasContent = true
 		}
 	}
 
-	if reason := GetBadStopReason(finish, native); reason != "" {
-		response.WriteChunk(NewChunk(ChunkError, fmt.Errorf("stopped due to: %s", reason)))
-	}
-
-	if finish == "" && !hasContent {
+	if !hasContent {
 		response.WriteChunk(NewChunk(ChunkError, errors.New("no content returned")))
 	}
 
@@ -296,30 +255,56 @@ func RunCompletion(ctx context.Context, response *Stream, request *openrouter.Ch
 	return nil
 }
 
-func GetBadStopReason(finish openrouter.FinishReason, native string) string {
-	if finish == "" {
-		return ""
+func mimeTypeFromBase64(b64 string) string {
+	if len(b64) < 4 {
+		return "image/png"
 	}
 
-	switch finish {
-	case openrouter.FinishReasonLength:
-		return "token limit reached"
-	case openrouter.FinishReasonContentFilter:
-		return "content filter"
+	limit := 32
+	if len(b64) < limit {
+		limit = (len(b64) / 4) * 4
 	}
 
-	debug("finished with: %q", finish)
-
-	if native == "" {
-		return ""
+	if limit == 0 {
+		return "image/png"
 	}
 
-	mapped, ok := nativeFinishReasons[native]
-	if ok {
-		return mapped
+	prefix := b64[:limit]
+
+	dec := make([]byte, base64.RawStdEncoding.DecodedLen(len(prefix)))
+
+	n, err := base64.RawStdEncoding.Decode(dec, []byte(prefix))
+	if err != nil {
+		dec = make([]byte, base64.StdEncoding.DecodedLen(len(prefix)))
+
+		n, err = base64.StdEncoding.Decode(dec, []byte(prefix))
+		if err != nil {
+			return "image/png"
+		}
 	}
 
-	debug("unknown native finish reason: %q", native)
+	dec = dec[:n]
 
-	return ""
+	// PNG: 89 50 4E 47 0D 0A 1A 0A
+	if bytes.HasPrefix(dec, []byte("\x89PNG\r\n\x1a\n")) {
+		return "image/png"
+	}
+
+	// JPEG: FF D8 FF
+	if bytes.HasPrefix(dec, []byte("\xff\xd8\xff")) {
+		return "image/jpeg"
+	}
+
+	// WebP: RIFFxxxxWEBP
+	if len(dec) >= 12 && bytes.HasPrefix(dec, []byte("RIFF")) && bytes.Equal(dec[8:12], []byte("WEBP")) {
+		return "image/webp"
+	}
+
+	// SVG: check for common tags
+	str := strings.TrimSpace(string(dec))
+	if strings.HasPrefix(str, "<svg") || strings.HasPrefix(str, "<?xml") || strings.Contains(strings.ToLower(str), "<svg") {
+		return "image/svg+xml"
+	}
+
+	return "image/png"
 }

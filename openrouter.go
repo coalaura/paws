@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -26,10 +25,10 @@ func OpenRouterClient() *openrouter.Client {
 	return openrouter.NewClientWithConfig(*cc)
 }
 
-func OpenRouterStartStream(ctx context.Context, request openrouter.ChatCompletionRequest) (*openrouter.ChatCompletionStream, error) {
+func OpenRouterStartImageStream(ctx context.Context, request openrouter.ImageGenerationRequest) (*openrouter.ImageGenerationStream, error) {
 	client := OpenRouterClient()
 
-	stream, err := client.CreateChatCompletionStream(ctx, request)
+	stream, err := client.CreateImagesStream(ctx, request)
 	if err != nil {
 		log.Warnln(err)
 
@@ -37,29 +36,6 @@ func OpenRouterStartStream(ctx context.Context, request openrouter.ChatCompletio
 	}
 
 	return stream, nil
-}
-
-func OpenRouterRun(ctx context.Context, request openrouter.ChatCompletionRequest) (openrouter.ChatCompletionResponse, error) {
-	client := OpenRouterClient()
-
-	response, err := client.CreateChatCompletion(ctx, request)
-	if err != nil {
-		log.Warnln(err)
-
-		return response, err
-	}
-
-	if len(response.Choices) == 0 {
-		return response, errors.New("no choices")
-	}
-
-	return response, nil
-}
-
-func OpenRouterGetGeneration(ctx context.Context, id string) (openrouter.Generation, error) {
-	client := OpenRouterClient()
-
-	return client.GetGeneration(ctx, id)
 }
 
 func OpenRouterListModels(ctx context.Context) (map[string]openrouter.Model, error) {

@@ -1,7 +1,7 @@
 github.com/coalaura/byteconv v0.1.0 h1:LSS0zi3STk/y81YNrjkv9OKwZZ1CS5TcOmM1JfIWQYQ=
 github.com/coalaura/byteconv v0.1.0/go.mod h1:0UH4yRUmQnRcvT8amAaLDpasKBPWxkmDKaHVnI3sn5k=
-github.com/coalaura/go-openrouter v0.2.9-0.20260628214959-dab6578df256 h1:VTO4b/nWwaBWspwHYGyiMxjRMO2S365jd3n6l8RF7Cc=
-github.com/coalaura/go-openrouter v0.2.9-0.20260628214959-dab6578df256/go.mod h1:xByLw2kG+6qcregvtIY8MB7xvmVHns8McC9B0lQJluY=
+github.com/coalaura/go-openrouter v0.2.9-0.20260628221354-a4b74433d3b7 h1:iLohplAgGNmGRMOrIAEXGSQwSUoiH1USXFYCWBCPNaQ=
+github.com/coalaura/go-openrouter v0.2.9-0.20260628221354-a4b74433d3b7/go.mod h1:xByLw2kG+6qcregvtIY8MB7xvmVHns8McC9B0lQJluY=
 github.com/coalaura/openingrouter v0.2.0 h1:rUUoSbsPOtutOqCnY1+AmfD8K4YUW/KWUdqAIDXnqd8=
 github.com/coalaura/openingrouter v0.2.0/go.mod h1:C3GfmNDQLbBU+R3hcScNNytuZaAvOWbQZsDgQKe4MUQ=
 github.com/coalaura/plain v1.4.3 h1:BKup0c+61D0HJPwYM9ddh+3CsHzMXWg6vGhRP/mmVXc=
