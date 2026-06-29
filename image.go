@@ -99,7 +99,7 @@ func (r *ChatRequest) Parse() (*openrouter.ImageGenerationRequest, error) {
 	case "21:9":
 		request.AspectRatio = openrouter.ImageAspectRatio21x9
 	default:
-		request.AspectRatio = openrouter.ImageAspectRatioAuto
+		// don't set aspect ratio
 	}
 
 	for _, img := range r.Images {
