@@ -39,9 +39,10 @@ func (r *ChatRequest) Parse() (*openrouter.ImageGenerationRequest, error) {
 	request.Model = r.Model
 
 	prompt := r.Prompt
+
 	if r.System != "" {
 		if prompt != "" {
-			prompt = r.System + "\n" + prompt
+			prompt = r.System + "\n\n" + prompt
 		} else {
 			prompt = r.System
 		}
@@ -50,6 +51,7 @@ func (r *ChatRequest) Parse() (*openrouter.ImageGenerationRequest, error) {
 	if prompt == "" {
 		return nil, errors.New("missing prompt or system")
 	}
+
 	request.Prompt = prompt
 
 	switch r.Image.Resolution {
@@ -102,6 +104,7 @@ func (r *ChatRequest) Parse() (*openrouter.ImageGenerationRequest, error) {
 
 	for _, img := range r.Images {
 		request.InputReferences = append(request.InputReferences, openrouter.ImageInputReference{
+			Type: openrouter.ImageInputReferenceTypeImageURL,
 			ImageURL: openrouter.ImageURLRef{
 				URL: img,
 			},
