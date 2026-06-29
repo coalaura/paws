@@ -87,9 +87,11 @@ if (useDefaultSys) {
 }
 
 $prompt.value = load("prompt", "");
-$resolution.value = load("resolution", "");
-$aspectRatio.value = load("aspect", "2K");
+$resolution.value = load("resolution", "2K");
+$aspectRatio.value = load("aspect", "");
 $maxRefResolution.value = load("maxRefResolution", "0");
+
+updateResolutionEstimate();
 
 export function fixed(num, decimals = 0) {
 	return num.toFixed(decimals).replace(/\.?0+$/m, "");
@@ -243,6 +245,64 @@ function updateAvailableResolutions() {
 	} else {
 		resDropdown.setAvailable(["1K", "2K", "4K"]);
 	}
+
+	updateResolutionEstimate();
+}
+
+function updateResolutionEstimate() {
+	const res = $resolution.value,
+		aspect = $aspectRatio.value;
+
+	const $valSpan = document.getElementById("resolution-estimate-val");
+
+	if (!$valSpan) {
+		return;
+	}
+
+	let targetArea = 2048 * 2048; // default 2K
+
+	if (res === "512") {
+		targetArea = 512 * 512;
+	} else if (res === "1K") {
+		targetArea = 1024 * 1024;
+	} else if (res === "2K") {
+		targetArea = 2048 * 2048;
+	} else if (res === "4K") {
+		targetArea = 4096 * 4096;
+	}
+
+	let w, h;
+
+	if (!aspect) {
+		w = Math.sqrt(targetArea);
+		h = w;
+	} else {
+		const parts = aspect.split(":");
+
+		if (parts.length === 2) {
+			const wRatio = parseFloat(parts[0]),
+				hRatio = parseFloat(parts[1]);
+
+			if (!isNaN(wRatio) && !isNaN(hRatio) && wRatio > 0 && hRatio > 0) {
+				h = Math.sqrt(targetArea * (hRatio / wRatio));
+				w = h * (wRatio / hRatio);
+			} else {
+				w = Math.sqrt(targetArea);
+				h = w;
+			}
+		} else {
+			w = Math.sqrt(targetArea);
+			h = w;
+		}
+	}
+
+	let w64 = Math.round(w / 64) * 64;
+	let h64 = Math.round(h / 64) * 64;
+
+	if (w64 < 64) w64 = 64;
+	if (h64 < 64) h64 = 64;
+
+	$valSpan.textContent = `${w64} × ${h64} px`;
 }
 
 function renderReferenceImages() {
@@ -395,6 +455,7 @@ function loadSettings(job) {
 	}
 
 	renderReferenceImages();
+	updateResolutionEstimate();
 }
 
 function createJobDOM(job) {
@@ -1344,10 +1405,14 @@ $model.addEventListener("change", () => {
 
 $resolution.addEventListener("change", () => {
 	store("resolution", $resolution.value);
+
+	updateResolutionEstimate();
 });
 
 $aspectRatio.addEventListener("change", () => {
 	store("aspect", $aspectRatio.value);
+
+	updateResolutionEstimate();
 });
 
 $maxRefResolution.addEventListener("change", async () => {

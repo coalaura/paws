@@ -171,6 +171,22 @@ body {
 	flex: 1;
 }
 
+.resolution-estimate {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--c-overlay2);
+	margin-top: -2px;
+	padding-left: 2px;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.resolution-estimate span {
+	font-weight: 600;
+	color: var(--c-subtext1);
+}
+
 label {
 	font-size: 13px;
 	font-weight: 600;

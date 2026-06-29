@@ -31,44 +31,50 @@
 					<select id="model" data-searchable></select>
 				</div>
 
-				<div class="form-row">
-					<div class="form-group">
-						<label for="resolution">Resolution</label>
+				<div class="form-group">
+					<div class="form-row">
+						<div class="form-group">
+							<label for="resolution">Resolution</label>
 
-						<select id="resolution">
-							<option value="1K">1K</option>
-							<option value="2K" selected>2K</option>
-							<option value="4K">4K</option>
-						</select>
+							<select id="resolution">
+								<option value="1K">1K</option>
+								<option value="2K" selected>2K</option>
+								<option value="4K">4K</option>
+							</select>
+						</div>
+
+						<div class="form-group">
+							<label for="aspect-ratio">Aspect Ratio</label>
+
+							<select id="aspect-ratio">
+								<option value="" selected>auto</option>
+								<option value="1:1">1:1</option>
+								<option value="1:2">1:2</option>
+								<option value="1:4">1:4</option>
+								<option value="1:8">1:8</option>
+								<option value="2:1">2:1</option>
+								<option value="2:3">2:3</option>
+								<option value="3:2">3:2</option>
+								<option value="3:4">3:4</option>
+								<option value="4:1">4:1</option>
+								<option value="4:3">4:3</option>
+								<option value="4:5">4:5</option>
+								<option value="5:4">5:4</option>
+								<option value="8:1">8:1</option>
+								<option value="9:16">9:16</option>
+								<option value="16:9">16:9</option>
+								<option value="9:19.5">9:19.5</option>
+								<option value="19.5:9">19.5:9</option>
+								<option value="9:20">9:20</option>
+								<option value="20:9">20:9</option>
+								<option value="9:21">9:21</option>
+								<option value="21:9">21:9</option>
+							</select>
+						</div>
 					</div>
 
-					<div class="form-group">
-						<label for="aspect-ratio">Aspect Ratio</label>
-
-						<select id="aspect-ratio">
-							<option value="" selected>auto</option>
-							<option value="1:1">1:1</option>
-							<option value="1:2">1:2</option>
-							<option value="1:4">1:4</option>
-							<option value="1:8">1:8</option>
-							<option value="2:1">2:1</option>
-							<option value="2:3">2:3</option>
-							<option value="3:2">3:2</option>
-							<option value="3:4">3:4</option>
-							<option value="4:1">4:1</option>
-							<option value="4:3">4:3</option>
-							<option value="4:5">4:5</option>
-							<option value="5:4">5:4</option>
-							<option value="8:1">8:1</option>
-							<option value="9:16">9:16</option>
-							<option value="16:9">16:9</option>
-							<option value="9:19.5">9:19.5</option>
-							<option value="19.5:9">19.5:9</option>
-							<option value="9:20">9:20</option>
-							<option value="20:9">20:9</option>
-							<option value="9:21">9:21</option>
-							<option value="21:9">21:9</option>
-						</select>
+					<div class="resolution-estimate" id="resolution-estimate">
+						Estimated Target: <span id="resolution-estimate-val">2048 x 2048 px</span>
 					</div>
 				</div>
 
