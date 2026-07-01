@@ -380,6 +380,62 @@ function renderReferenceImages() {
 
 		wrapper.appendChild(rmBtn);
 
+		wrapper.draggable = true;
+		wrapper.__refItem = item;
+
+		wrapper.addEventListener("dragstart", event => {
+			event.dataTransfer.setData("application/paws-ref-sort", "true");
+			event.dataTransfer.effectAllowed = "move";
+
+			setTimeout(() => wrapper.classList.add("dragging"), 0);
+		});
+
+		wrapper.addEventListener("dragend", () => {
+			wrapper.classList.remove("dragging");
+
+			const newImages = [];
+
+			$refImagesContainer.querySelectorAll(".ref-img-wrapper").forEach(w => {
+				if (w.__refItem) {
+					newImages.push(w.__refItem);
+				}
+			});
+
+			referenceImages.length = 0;
+			referenceImages.push(...newImages);
+
+			store("referenceImages", referenceImages);
+
+			renderReferenceImages();
+		});
+
+		wrapper.addEventListener("dragover", event => {
+			const types = Array.from(event.dataTransfer.types);
+
+			if (!types.includes("application/paws-ref-sort")) {
+				return;
+			}
+
+			event.preventDefault();
+			event.dataTransfer.dropEffect = "move";
+
+			const draggingNode = $refImagesContainer.querySelector(".dragging");
+
+			if (!draggingNode || draggingNode === wrapper) {
+				return;
+			}
+
+			const siblings = [...$refImagesContainer.querySelectorAll(".ref-img-wrapper")],
+				draggingIndex = siblings.indexOf(draggingNode),
+				targetIndex = siblings.indexOf(wrapper);
+
+			if (draggingIndex < targetIndex) {
+				wrapper.after(draggingNode);
+			} else {
+				wrapper.before(draggingNode);
+			}
+		});
+
 		$refImagesContainer.insertBefore(wrapper, $addRefBtn);
 	});
 
@@ -505,6 +561,7 @@ function loadSettings(job) {
 
 	renderReferenceImages();
 	updateResolutionEstimate();
+	clearPresetSelection();
 }
 
 function createJobDOM(job) {
@@ -1358,6 +1415,12 @@ $refImagesContainer.addEventListener("drop", async event => {
 	event.preventDefault();
 
 	$refImagesContainer.classList.remove("drag-over");
+
+	const types = Array.from(event.dataTransfer.types);
+
+	if (types.includes("application/paws-ref-index")) {
+		return;
+	}
 
 	const data = event.dataTransfer.getData("text/plain");
 

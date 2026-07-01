@@ -417,6 +417,12 @@ input:focus {
 	border-radius: 2px;
 	background: var(--c-surface0);
 	border: 1px solid var(--c-surface1);
+	transition: opacity 0.2s;
+}
+
+.ref-img-wrapper.dragging {
+	opacity: 0.4;
+	z-index: 10;
 }
 
 .ref-img-wrapper img {
@@ -846,7 +852,7 @@ input:focus {
 	height: 32px;
 	border: 3px solid var(--c-surface2);
 	border-top-color: var(--c-mauve);
-	border-radius: 2px;
+	border-radius: 50%;
 	animation: spin 1s linear infinite;
 	z-index: 10;
 }
@@ -986,7 +992,7 @@ input:focus {
 	height: 28px;
 	border: 3px solid var(--c-surface2);
 	border-top-color: var(--c-mauve);
-	border-radius: 2px;
+	border-radius: 50%;
 	animation: spin 1s linear infinite;
 }
 
