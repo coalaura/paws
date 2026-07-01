@@ -63,6 +63,10 @@ class Dropdown {
 		const allowedTabs = this.#tabs.length ? new Set(this.#tabs) : null;
 
 		this.#_select.querySelectorAll("option").forEach(option => {
+			if (option.disabled && option.value === "") {
+				return;
+			}
+
 			const classes = option.dataset.classes?.trim(),
 				isFavorite = !!option.dataset.favorite,
 				isDisabled = !!option.dataset.disabled,
@@ -105,7 +109,7 @@ class Dropdown {
 
 				this.setValues(values, false);
 			} else {
-				this.#set(this.#_select.value || this.#options[0].value);
+				this.#set(this.#_select.value);
 			}
 		}
 	}
@@ -117,6 +121,7 @@ class Dropdown {
 		const descriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
 
 		Object.defineProperty(this.#_select, "value", {
+			configurable: true,
 			get: () => {
 				return descriptor.get.call(this.#_select);
 			},
@@ -761,8 +766,11 @@ class Dropdown {
 		}
 
 		if (this.#selected === false) {
-			this.#_selected.title = "";
-			this.#_selected.innerHTML = "";
+			const placeholder = this.#_select.querySelector("option[disabled]");
+			this.#_selected.title = placeholder ? placeholder.textContent : "";
+			this.#_selected.textContent = placeholder ? placeholder.textContent : "";
+
+			this.#_dropdown.removeAttribute("data-value");
 
 			return;
 		}

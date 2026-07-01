@@ -86,7 +86,10 @@ let rawRefs = load("referenceImages", []),
 	useDefaultSys = load("useDefaultSystem", false),
 	resDropdown = null,
 	presets = load("presets", load("settingsPresets", [])),
-	activeComposerPane = load("activeComposerPane", "prompt");
+	presetOrder = load("presetOrder", []),
+	activeComposerPane = load("activeComposerPane", "prompt"),
+	activePresetName = "",
+	unsavedPreset = null;
 
 $useDefaultSystem.checked = useDefaultSys;
 
@@ -286,10 +289,7 @@ function updateResolutionEstimate() {
 
 	let w, h;
 
-	if (!aspect) {
-		w = Math.sqrt(targetArea);
-		h = w;
-	} else {
+	if (aspect) {
 		const parts = aspect.split(":");
 
 		if (parts.length === 2) {
@@ -307,13 +307,21 @@ function updateResolutionEstimate() {
 			w = Math.sqrt(targetArea);
 			h = w;
 		}
+	} else {
+		w = Math.sqrt(targetArea);
+		h = w;
 	}
 
-	let w64 = Math.round(w / 64) * 64;
-	let h64 = Math.round(h / 64) * 64;
+	let w64 = Math.round(w / 64) * 64,
+		h64 = Math.round(h / 64) * 64;
 
-	if (w64 < 64) w64 = 64;
-	if (h64 < 64) h64 = 64;
+	if (w64 < 64) {
+		w64 = 64;
+	}
+
+	if (h64 < 64) {
+		h64 = 64;
+	}
 
 	$valSpan.textContent = `${w64} × ${h64} px`;
 }
@@ -366,6 +374,7 @@ function renderReferenceImages() {
 
 		rmBtn.addEventListener("click", () => {
 			referenceImages.splice(index, 1);
+
 			renderReferenceImages();
 		});
 
@@ -413,6 +422,7 @@ async function useAsReference(job) {
 
 	if (referenceImages.length >= MaxImages) {
 		console.warn("Maximum reference images reached");
+
 		return;
 	}
 
@@ -1526,27 +1536,67 @@ for (let i = jobs.length - 1; i >= 0; i--) {
 	setupJobUI(ui, job);
 }
 
-// --- Presets Logic ---
+function sortPresetsByOrder(list = []) {
+	const orderMap = new Map(presetOrder.map((name, index) => [name, index]));
+
+	return [...list].sort((a, b) => {
+		const aIdx = orderMap.has(a.name) ? orderMap.get(a.name) : Number.MAX_SAFE_INTEGER,
+			bIdx = orderMap.has(b.name) ? orderMap.get(b.name) : Number.MAX_SAFE_INTEGER;
+
+		if (aIdx !== bIdx) {
+			return aIdx - bIdx;
+		}
+
+		return a.name.localeCompare(b.name);
+	});
+}
+
+function snapshotCurrentPresetState(name = "") {
+	return {
+		name: name,
+		model: $model.value,
+		prompt: $prompt.value.trim(),
+		system: useDefaultSys ? $systemMessage.value.trim() : $systemMessage.value.trim() || "",
+		useDefaultSystem: useDefaultSys,
+	};
+}
 
 function renderPresets(selectedName = "") {
 	$presetSelect.innerHTML = '<option value="" disabled selected>Load Preset...</option>';
 
-	presets.sort((a, b) => a.name.localeCompare(b.name));
+	if (unsavedPreset) {
+		const unsavedOption = document.createElement("option");
 
-	presets.forEach(preset => {
+		unsavedOption.value = "__preset__";
+		unsavedOption.textContent = "unsaved*";
+
+		$presetSelect.appendChild(unsavedOption);
+	}
+
+	sortPresetsByOrder(presets).forEach(preset => {
 		const option = document.createElement("option");
+
 		option.value = preset.name;
 		option.textContent = preset.name;
+
 		$presetSelect.appendChild(option);
 	});
 
 	if (selectedName) {
 		$presetSelect.value = selectedName;
-		$deletePresetBtn.disabled = false;
+		$deletePresetBtn.disabled = selectedName === "__preset__";
 	} else {
 		$presetSelect.value = "";
 		$deletePresetBtn.disabled = true;
 	}
+
+	const existingDropdown = $presetSelect.nextElementSibling;
+
+	if (existingDropdown?.classList.contains("dropdown")) {
+		existingDropdown.remove();
+	}
+
+	dropdown($presetSelect);
 }
 
 function applyPreset(preset) {
@@ -1555,28 +1605,36 @@ function applyPreset(preset) {
 	}
 
 	isApplyingPreset = true;
+
 	try {
 		if (preset.model) {
 			$model.value = preset.model;
+
 			store("model", preset.model);
+
 			$model.dispatchEvent(new Event("change"));
 		}
 
 		if (preset.useDefaultSystem !== undefined) {
 			$useDefaultSystem.checked = preset.useDefaultSystem;
+
 			useDefaultSys = preset.useDefaultSystem;
+
 			store("useDefaultSystem", useDefaultSys);
 
 			if (useDefaultSys) {
 				$systemMessage.value = SystemPrompt;
 				$systemMessage.disabled = true;
 				$systemMessage.style.opacity = "0.5";
+
 				store("system", SystemPrompt);
 			} else {
 				const customSys = preset.system || "";
+
 				$systemMessage.value = customSys;
 				$systemMessage.disabled = false;
 				$systemMessage.style.opacity = "1";
+
 				store("customSystem", customSys);
 				store("system", customSys);
 			}
@@ -1584,6 +1642,7 @@ function applyPreset(preset) {
 
 		if (preset.prompt !== undefined) {
 			$prompt.value = preset.prompt;
+
 			store("prompt", preset.prompt);
 		}
 	} finally {
@@ -1592,6 +1651,8 @@ function applyPreset(preset) {
 }
 
 function clearPresetSelection() {
+	activePresetName = "";
+
 	if ($presetSelect) {
 		$presetSelect.value = "";
 	}
@@ -1600,35 +1661,70 @@ function clearPresetSelection() {
 	}
 }
 
-// Event Listeners for Presets
+$presetSelect.addEventListener("favorite", event => {
+	presetOrder = event.detail;
+
+	store("presetOrder", presetOrder);
+});
+
 $presetSelect.addEventListener("change", () => {
 	const selectedName = $presetSelect.value;
+
 	if (selectedName) {
-		const preset = presets.find(p => p.name === selectedName);
+		if (selectedName === "__preset__") {
+			applyPreset(unsavedPreset);
+
+			activePresetName = "";
+			unsavedPreset = null;
+
+			renderPresets("");
+
+			return;
+		}
+
+		if (selectedName !== "__preset__" && !activePresetName) {
+			unsavedPreset = snapshotCurrentPresetState("unsaved*");
+		}
+
+		const preset = selectedName === "__preset__" ? unsavedPreset : presets.find(p => p.name === selectedName);
+
 		applyPreset(preset);
-		$deletePresetBtn.disabled = false;
+
+		activePresetName = selectedName;
+
+		$deletePresetBtn.disabled = selectedName === "__preset__";
 	} else {
+		activePresetName = "";
+
 		$deletePresetBtn.disabled = true;
 	}
+
+	renderPresets(selectedName);
 });
 
 $savePresetBtn.addEventListener("click", () => {
-	const selectedPresetName = $presetSelect.value;
+	const selectedPresetName = $presetSelect.value === "__preset__" ? "" : $presetSelect.value;
+
 	$presetNameInput.value = selectedPresetName || "";
+
 	$savePresetError.textContent = "";
 	$savePresetModal.classList.remove("errored");
 
 	const exists = presets.some(p => p.name.toLowerCase() === $presetNameInput.value.trim().toLowerCase());
+
 	$confirmSavePresetBtn.textContent = exists ? "Override" : "Save";
 
 	$savePresetModal.classList.add("open");
+
 	$presetNameInput.focus();
 });
 
 $presetNameInput.addEventListener("input", () => {
-	const name = $presetNameInput.value.trim();
-	const exists = presets.some(p => p.name.toLowerCase() === name.toLowerCase());
+	const name = $presetNameInput.value.trim(),
+		exists = presets.some(p => p.name.toLowerCase() === name.toLowerCase());
+
 	$confirmSavePresetBtn.textContent = exists ? "Override" : "Save";
+
 	$savePresetModal.classList.remove("errored");
 	$savePresetError.textContent = "";
 });
@@ -1643,61 +1739,81 @@ $savePresetModal.querySelector(".background").addEventListener("click", () => {
 
 $confirmSavePresetBtn.addEventListener("click", () => {
 	const name = $presetNameInput.value.trim();
+
 	if (!name) {
 		$savePresetError.textContent = "Please enter a preset name.";
+
 		$savePresetModal.classList.add("errored");
+
 		return;
 	}
 
-	const currentSetup = {
-		name: name,
-		model: $model.value,
-		prompt: $prompt.value.trim(),
-		system: useDefaultSys ? $systemMessage.value.trim() : ($systemMessage.value.trim() || ""),
-		useDefaultSystem: useDefaultSys
-	};
+	const currentSetup = snapshotCurrentPresetState(name);
 
 	const existingIndex = presets.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+
 	if (existingIndex > -1) {
+		const previousName = presets[existingIndex].name;
+
 		presets[existingIndex] = currentSetup;
+
+		if (previousName !== name) {
+			presetOrder = presetOrder.map(orderName => (orderName === previousName ? name : orderName));
+		}
 	} else {
 		presets.push(currentSetup);
+
+		if (!presetOrder.includes(name)) {
+			presetOrder.push(name);
+		}
 	}
 
 	store("presets", presets);
 	store("settingsPresets", presets);
+	store("presetOrder", presetOrder);
+
+	activePresetName = name;
+
 	renderPresets(name);
+
 	$savePresetModal.classList.remove("open");
 });
 
 $deletePresetBtn.addEventListener("click", () => {
 	const selectedName = $presetSelect.value;
+
 	if (!selectedName) {
 		return;
 	}
 
 	if (confirm(`Are you sure you want to delete "${selectedName}"?`)) {
 		presets = presets.filter(p => p.name !== selectedName);
+		presetOrder = presetOrder.filter(name => name !== selectedName);
+
 		store("presets", presets);
 		store("settingsPresets", presets);
+		store("presetOrder", presetOrder);
+
+		activePresetName = "";
+
 		renderPresets("");
 	}
 });
 
-// Escape key to close modals
 document.addEventListener("keydown", event => {
 	if (event.key === "Escape") {
-		if ($savePresetModal && $savePresetModal.classList.contains("open")) {
+		if ($savePresetModal?.classList.contains("open")) {
 			$savePresetModal.classList.remove("open");
 		}
-		if ($imageModal && $imageModal.classList.contains("open")) {
+
+		if ($imageModal?.classList.contains("open")) {
 			$imageModal.classList.remove("open");
 		}
 	}
 });
 
-// Initial render of saved presets
 renderPresets();
+
 setComposerPane(activeComposerPane, false);
 
 fetchUsage();
