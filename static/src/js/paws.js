@@ -85,7 +85,7 @@ let rawRefs = load("referenceImages", []),
 	currentUsageData = null,
 	useDefaultSys = load("useDefaultSystem", false),
 	resDropdown = null,
-	presets = load("settingsPresets", []),
+	presets = load("presets", load("settingsPresets", [])),
 	activeComposerPane = load("activeComposerPane", "prompt");
 
 $useDefaultSystem.checked = useDefaultSys;
@@ -596,9 +596,9 @@ function createJobDOM(job) {
 	menu.appendChild(loadSettingsItem);
 
 	actions.appendChild(closeBtn);
+	actions.appendChild(moreBtn);
 	actions.appendChild(retryBtn);
 	actions.appendChild(dlBtn);
-	actions.appendChild(moreBtn);
 	actions.appendChild(menu);
 
 	imgContainer.appendChild(img);
@@ -1526,10 +1526,10 @@ for (let i = jobs.length - 1; i >= 0; i--) {
 	setupJobUI(ui, job);
 }
 
-// --- Presets / Saved Setups Logic ---
+// --- Presets Logic ---
 
 function renderPresets(selectedName = "") {
-	$presetSelect.innerHTML = '<option value="" disabled selected>Load Setup...</option>';
+	$presetSelect.innerHTML = '<option value="" disabled selected>Load Preset...</option>';
 
 	presets.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -1644,7 +1644,7 @@ $savePresetModal.querySelector(".background").addEventListener("click", () => {
 $confirmSavePresetBtn.addEventListener("click", () => {
 	const name = $presetNameInput.value.trim();
 	if (!name) {
-		$savePresetError.textContent = "Please enter a setup name.";
+		$savePresetError.textContent = "Please enter a preset name.";
 		$savePresetModal.classList.add("errored");
 		return;
 	}
@@ -1664,6 +1664,7 @@ $confirmSavePresetBtn.addEventListener("click", () => {
 		presets.push(currentSetup);
 	}
 
+	store("presets", presets);
 	store("settingsPresets", presets);
 	renderPresets(name);
 	$savePresetModal.classList.remove("open");
@@ -1677,6 +1678,7 @@ $deletePresetBtn.addEventListener("click", () => {
 
 	if (confirm(`Are you sure you want to delete "${selectedName}"?`)) {
 		presets = presets.filter(p => p.name !== selectedName);
+		store("presets", presets);
 		store("settingsPresets", presets);
 		renderPresets("");
 	}
@@ -1694,7 +1696,7 @@ document.addEventListener("keydown", event => {
 	}
 });
 
-// Initial render of saved setups
+// Initial render of saved presets
 renderPresets();
 setComposerPane(activeComposerPane, false);
 

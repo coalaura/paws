@@ -129,7 +129,7 @@ body {
 	cursor: pointer;
 	user-select: none;
 	padding: 4px 8px;
-	border-radius: 6px;
+	border-radius: 2px;
 	transition:
 		background 0.2s,
 		color 0.2s;
@@ -227,7 +227,7 @@ label {
 	height: 15px;
 	background: var(--c-crust);
 	border: 1px solid var(--c-surface1);
-	border-radius: 3px;
+	border-radius: 2px;
 	cursor: pointer;
 	transition: all 0.2s;
 	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -252,7 +252,7 @@ input {
 	background: var(--c-crust);
 	border: 1px solid var(--c-surface0);
 	color: var(--c-text);
-	border-radius: 8px;
+	border-radius: 2px;
 	padding: 10px 12px;
 	font-family: inherit;
 	font-size: 14px;
@@ -282,7 +282,7 @@ input:focus {
 .composer-container {
 	background: var(--c-crust);
 	border: 1px solid var(--c-surface0);
-	border-radius: 8px;
+	border-radius: 2px;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -364,7 +364,7 @@ input:focus {
 	border-color: var(--c-surface1);
 	background: transparent;
 	box-shadow: none;
-	border-radius: 6px;
+	border-radius: 2px;
 }
 
 #ref-images-header .dropdown:hover {
@@ -410,7 +410,7 @@ input:focus {
 	position: relative;
 	width: 100%;
 	aspect-ratio: 1 / 1;
-	border-radius: 8px;
+	border-radius: 2px;
 	background: var(--c-surface0);
 	border: 1px solid var(--c-surface1);
 }
@@ -419,7 +419,7 @@ input:focus {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-	border-radius: 7px;
+	border-radius: 2px;
 }
 
 .rm-ref-btn {
@@ -431,7 +431,7 @@ input:focus {
 	background: var(--c-red);
 	color: var(--c-crust);
 	border: none;
-	border-radius: 50%;
+	border-radius: 2px;
 	cursor: pointer;
 	font-size: 14px;
 	line-height: 14px;
@@ -456,7 +456,7 @@ input:focus {
 
 #add-ref-btn {
 	width: 100%;
-	border-radius: 8px;
+	border-radius: 2px;
 	background: var(--c-crust);
 	border: 1px dashed var(--c-surface1);
 	cursor: pointer;
@@ -496,7 +496,7 @@ input:focus {
 	background: var(--c-mauve);
 	color: var(--c-crust);
 	border: none;
-	border-radius: 6px;
+	border-radius: 2px;
 	padding: 14px;
 	font-size: 15px;
 	font-weight: 600;
@@ -615,7 +615,7 @@ input:focus {
 	backdrop-filter: blur(4px);
 	color: var(--c-text);
 	border: 1px solid var(--c-surface1);
-	border-radius: 6px;
+	border-radius: 2px;
 	padding: 3px 7px;
 	font-size: 11px;
 	font-weight: 600;
@@ -666,7 +666,7 @@ input:focus {
 .model-provider-icon {
 	width: 16px;
 	height: 16px;
-	border-radius: 3px;
+	border-radius: 2px;
 	object-fit: contain;
 	flex-shrink: 0;
 }
@@ -676,7 +676,7 @@ input:focus {
 	backdrop-filter: blur(4px);
 	color: var(--c-text);
 	border: 1px solid var(--c-surface1);
-	border-radius: 6px;
+	border-radius: 2px;
 	width: 28px;
 	height: 28px;
 	display: flex;
@@ -718,7 +718,7 @@ input:focus {
 	z-index: 30;
 	background: var(--c-mantle);
 	border: 1px solid var(--c-surface1);
-	border-radius: 8px;
+	border-radius: 2px;
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 	padding: 4px;
 	min-width: 180px;
@@ -744,7 +744,7 @@ input:focus {
 	align-items: center;
 	gap: 8px;
 	padding: 8px 12px;
-	border-radius: 6px;
+	border-radius: 2px;
 	cursor: pointer;
 	font-size: 13px;
 	color: var(--c-text);
@@ -808,7 +808,7 @@ input:focus {
 	max-width: 90vw;
 	max-height: 90vh;
 	object-fit: contain;
-	border-radius: 8px;
+	border-radius: 2px;
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
@@ -819,7 +819,7 @@ input:focus {
 	background: var(--c-red);
 	color: var(--c-crust);
 	border: none;
-	border-radius: 50%;
+	border-radius: 2px;
 	width: 32px;
 	height: 32px;
 	font-size: 20px;
@@ -842,7 +842,7 @@ input:focus {
 	height: 32px;
 	border: 3px solid var(--c-surface2);
 	border-top-color: var(--c-mauve);
-	border-radius: 50%;
+	border-radius: 2px;
 	animation: spin 1s linear infinite;
 	z-index: 10;
 }
@@ -875,7 +875,7 @@ input:focus {
 .job-refs img {
 	width: 24px;
 	height: 24px;
-	border-radius: 4px;
+	border-radius: 2px;
 	object-fit: cover;
 	border: 1px solid var(--c-surface2);
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
@@ -939,7 +939,7 @@ input:focus {
 	gap: 14px;
 	background: var(--c-base);
 	padding: 18px 20px;
-	border-radius: 12px;
+	border-radius: 2px;
 	box-shadow: 0px 0px 15px 5px rgba(0, 0, 0, 0.1);
 	z-index: 50;
 	min-width: 360px;
@@ -982,7 +982,7 @@ input:focus {
 	height: 28px;
 	border: 3px solid var(--c-surface2);
 	border-top-color: var(--c-mauve);
-	border-radius: 50%;
+	border-radius: 2px;
 	animation: spin 1s linear infinite;
 }
 
@@ -994,7 +994,7 @@ input:focus {
 	font-size: 14px;
 	color: var(--c-crust-dark);
 	padding: 5px 10px;
-	border-radius: 4px;
+	border-radius: 2px;
 }
 
 .modal:not(.errored) .error {
@@ -1030,7 +1030,7 @@ input:focus {
 	background: color-mix(in srgb, var(--c-green) 90%, black);
 	color: var(--c-crust);
 	padding: 10px 20px;
-	border-radius: 6px;
+	border-radius: 2px;
 	border: none;
 	font-weight: 600;
 	cursor: pointer;
@@ -1122,7 +1122,7 @@ input:focus {
 	}
 }
 
-/* Preset / Saved Setups Controls */
+/* Preset Controls */
 .preset-row {
 	display: flex;
 	gap: 6px;
@@ -1134,7 +1134,7 @@ input:focus {
 	background: var(--c-crust);
 	border: 1px solid var(--c-surface0);
 	color: var(--c-text);
-	border-radius: 6px;
+	border-radius: 2px;
 	padding: 8px 12px;
 	font-family: inherit;
 	font-size: 13px;
@@ -1158,7 +1158,7 @@ input:focus {
 	min-width: 34px;
 	background: var(--c-surface0);
 	border: 1px solid var(--c-surface1);
-	border-radius: 6px;
+	border-radius: 2px;
 	color: var(--c-text);
 	cursor: pointer;
 	display: flex;
@@ -1211,7 +1211,7 @@ input:focus {
 
 .modal-btn {
 	padding: 10px 20px;
-	border-radius: 6px;
+	border-radius: 2px;
 	border: none;
 	font-weight: 600;
 	cursor: pointer;
