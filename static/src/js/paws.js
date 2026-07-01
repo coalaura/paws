@@ -63,7 +63,17 @@ const $loader = document.getElementById("global-loader"),
 	$fullImage = document.getElementById("full-image"),
 	$closeImageModal = document.getElementById("close-image-modal"),
 	$usageDisplay = document.getElementById("usage-display"),
-	$maxRefResolution = document.getElementById("max-ref-resolution");
+	$maxRefResolution = document.getElementById("max-ref-resolution"),
+	$presetSelect = document.getElementById("preset-select"),
+	$savePresetBtn = document.getElementById("save-preset-btn"),
+	$deletePresetBtn = document.getElementById("delete-preset-btn"),
+	$savePresetModal = document.getElementById("save-preset-modal"),
+	$savePresetError = document.getElementById("save-preset-error"),
+	$presetNameInput = document.getElementById("preset-name-input"),
+	$cancelSavePresetBtn = document.getElementById("cancel-save-preset-btn"),
+	$confirmSavePresetBtn = document.getElementById("confirm-save-preset-btn"),
+	$composerTabs = document.querySelectorAll(".composer-tab"),
+	$systemDefaultToggle = document.getElementById("system-default-toggle");
 
 await connectDB();
 
@@ -74,7 +84,9 @@ let rawRefs = load("referenceImages", []),
 	currentUsageType = load("usageType", "daily"),
 	currentUsageData = null,
 	useDefaultSys = load("useDefaultSystem", false),
-	resDropdown = null;
+	resDropdown = null,
+	presets = load("settingsPresets", []),
+	activeComposerPane = load("activeComposerPane", "prompt");
 
 $useDefaultSystem.checked = useDefaultSys;
 
@@ -84,6 +96,7 @@ if (useDefaultSys) {
 	$systemMessage.style.opacity = "0.5";
 } else {
 	$systemMessage.value = load("customSystem", load("system", ""));
+	$systemMessage.style.opacity = "1";
 }
 
 $prompt.value = load("prompt", "");
@@ -303,6 +316,32 @@ function updateResolutionEstimate() {
 	if (h64 < 64) h64 = 64;
 
 	$valSpan.textContent = `${w64} × ${h64} px`;
+}
+
+function setComposerPane(pane, persist = true) {
+	const nextPane = pane === "system" ? "system" : "prompt";
+
+	$composerTabs.forEach(tab => {
+		const isActive = tab.dataset.pane === nextPane;
+		tab.classList.toggle("active", isActive);
+		tab.setAttribute("aria-selected", isActive ? "true" : "false");
+	});
+
+	if (nextPane === "prompt") {
+		$prompt.classList.remove("hidden");
+		$systemMessage.classList.add("hidden");
+		$systemDefaultToggle.classList.add("hidden");
+	} else {
+		$prompt.classList.add("hidden");
+		$systemMessage.classList.remove("hidden");
+		$systemDefaultToggle.classList.remove("hidden");
+	}
+
+	activeComposerPane = nextPane;
+
+	if (persist) {
+		store("activeComposerPane", nextPane);
+	}
 }
 
 function renderReferenceImages() {
@@ -1356,6 +1395,14 @@ $prompt.addEventListener("paste", async event => {
 	}
 });
 
+let isApplyingPreset = false;
+
+$composerTabs.forEach(tab => {
+	tab.addEventListener("click", () => {
+		setComposerPane(tab.dataset.pane);
+	});
+});
+
 $useDefaultSystem.addEventListener("change", event => {
 	useDefaultSys = event.target.checked;
 
@@ -1376,6 +1423,10 @@ $useDefaultSystem.addEventListener("change", event => {
 	}
 
 	store("system", $systemMessage.value);
+
+	if (!isApplyingPreset) {
+		clearPresetSelection();
+	}
 });
 
 $systemMessage.addEventListener("input", () => {
@@ -1383,10 +1434,18 @@ $systemMessage.addEventListener("input", () => {
 		store("customSystem", $systemMessage.value);
 		store("system", $systemMessage.value);
 	}
+
+	if (!isApplyingPreset) {
+		clearPresetSelection();
+	}
 });
 
 $prompt.addEventListener("input", () => {
 	store("prompt", $prompt.value);
+
+	if (!isApplyingPreset) {
+		clearPresetSelection();
+	}
 });
 
 $prompt.addEventListener("keydown", event => {
@@ -1401,6 +1460,10 @@ $model.addEventListener("change", () => {
 	store("model", $model.value);
 
 	updateAvailableResolutions();
+
+	if (!isApplyingPreset) {
+		clearPresetSelection();
+	}
 });
 
 $resolution.addEventListener("change", () => {
@@ -1462,6 +1525,178 @@ for (let i = jobs.length - 1; i >= 0; i--) {
 
 	setupJobUI(ui, job);
 }
+
+// --- Presets / Saved Setups Logic ---
+
+function renderPresets(selectedName = "") {
+	$presetSelect.innerHTML = '<option value="" disabled selected>Load Setup...</option>';
+
+	presets.sort((a, b) => a.name.localeCompare(b.name));
+
+	presets.forEach(preset => {
+		const option = document.createElement("option");
+		option.value = preset.name;
+		option.textContent = preset.name;
+		$presetSelect.appendChild(option);
+	});
+
+	if (selectedName) {
+		$presetSelect.value = selectedName;
+		$deletePresetBtn.disabled = false;
+	} else {
+		$presetSelect.value = "";
+		$deletePresetBtn.disabled = true;
+	}
+}
+
+function applyPreset(preset) {
+	if (!preset) {
+		return;
+	}
+
+	isApplyingPreset = true;
+	try {
+		if (preset.model) {
+			$model.value = preset.model;
+			store("model", preset.model);
+			$model.dispatchEvent(new Event("change"));
+		}
+
+		if (preset.useDefaultSystem !== undefined) {
+			$useDefaultSystem.checked = preset.useDefaultSystem;
+			useDefaultSys = preset.useDefaultSystem;
+			store("useDefaultSystem", useDefaultSys);
+
+			if (useDefaultSys) {
+				$systemMessage.value = SystemPrompt;
+				$systemMessage.disabled = true;
+				$systemMessage.style.opacity = "0.5";
+				store("system", SystemPrompt);
+			} else {
+				const customSys = preset.system || "";
+				$systemMessage.value = customSys;
+				$systemMessage.disabled = false;
+				$systemMessage.style.opacity = "1";
+				store("customSystem", customSys);
+				store("system", customSys);
+			}
+		}
+
+		if (preset.prompt !== undefined) {
+			$prompt.value = preset.prompt;
+			store("prompt", preset.prompt);
+		}
+	} finally {
+		isApplyingPreset = false;
+	}
+}
+
+function clearPresetSelection() {
+	if ($presetSelect) {
+		$presetSelect.value = "";
+	}
+	if ($deletePresetBtn) {
+		$deletePresetBtn.disabled = true;
+	}
+}
+
+// Event Listeners for Presets
+$presetSelect.addEventListener("change", () => {
+	const selectedName = $presetSelect.value;
+	if (selectedName) {
+		const preset = presets.find(p => p.name === selectedName);
+		applyPreset(preset);
+		$deletePresetBtn.disabled = false;
+	} else {
+		$deletePresetBtn.disabled = true;
+	}
+});
+
+$savePresetBtn.addEventListener("click", () => {
+	const selectedPresetName = $presetSelect.value;
+	$presetNameInput.value = selectedPresetName || "";
+	$savePresetError.textContent = "";
+	$savePresetModal.classList.remove("errored");
+
+	const exists = presets.some(p => p.name.toLowerCase() === $presetNameInput.value.trim().toLowerCase());
+	$confirmSavePresetBtn.textContent = exists ? "Override" : "Save";
+
+	$savePresetModal.classList.add("open");
+	$presetNameInput.focus();
+});
+
+$presetNameInput.addEventListener("input", () => {
+	const name = $presetNameInput.value.trim();
+	const exists = presets.some(p => p.name.toLowerCase() === name.toLowerCase());
+	$confirmSavePresetBtn.textContent = exists ? "Override" : "Save";
+	$savePresetModal.classList.remove("errored");
+	$savePresetError.textContent = "";
+});
+
+$cancelSavePresetBtn.addEventListener("click", () => {
+	$savePresetModal.classList.remove("open");
+});
+
+$savePresetModal.querySelector(".background").addEventListener("click", () => {
+	$savePresetModal.classList.remove("open");
+});
+
+$confirmSavePresetBtn.addEventListener("click", () => {
+	const name = $presetNameInput.value.trim();
+	if (!name) {
+		$savePresetError.textContent = "Please enter a setup name.";
+		$savePresetModal.classList.add("errored");
+		return;
+	}
+
+	const currentSetup = {
+		name: name,
+		model: $model.value,
+		prompt: $prompt.value.trim(),
+		system: useDefaultSys ? $systemMessage.value.trim() : ($systemMessage.value.trim() || ""),
+		useDefaultSystem: useDefaultSys
+	};
+
+	const existingIndex = presets.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+	if (existingIndex > -1) {
+		presets[existingIndex] = currentSetup;
+	} else {
+		presets.push(currentSetup);
+	}
+
+	store("settingsPresets", presets);
+	renderPresets(name);
+	$savePresetModal.classList.remove("open");
+});
+
+$deletePresetBtn.addEventListener("click", () => {
+	const selectedName = $presetSelect.value;
+	if (!selectedName) {
+		return;
+	}
+
+	if (confirm(`Are you sure you want to delete "${selectedName}"?`)) {
+		presets = presets.filter(p => p.name !== selectedName);
+		store("settingsPresets", presets);
+		renderPresets("");
+	}
+});
+
+// Escape key to close modals
+document.addEventListener("keydown", event => {
+	if (event.key === "Escape") {
+		if ($savePresetModal && $savePresetModal.classList.contains("open")) {
+			$savePresetModal.classList.remove("open");
+		}
+		if ($imageModal && $imageModal.classList.contains("open")) {
+			$imageModal.classList.remove("open");
+		}
+	}
+});
+
+// Initial render of saved setups
+renderPresets();
+setComposerPane(activeComposerPane, false);
 
 fetchUsage();
 

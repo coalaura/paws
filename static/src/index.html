@@ -25,6 +25,20 @@
 			</div>
 
 			<div class="panel-content">
+				<div class="preset-row">
+					<select id="preset-select" title="Saved Setups / Presets">
+						<option value="" disabled selected>Load Setup...</option>
+					</select>
+
+					<button id="save-preset-btn" class="preset-icon-btn" title="Save current setup">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+					</button>
+
+					<button id="delete-preset-btn" class="preset-icon-btn danger" title="Delete selected setup" disabled>
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 3 21 3 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+					</button>
+				</div>
+
 				<div class="form-group">
 					<label for="model">Model</label>
 
@@ -79,22 +93,22 @@
 				</div>
 
 				<div class="form-group">
-					<div class="label-row">
-						<label for="system-message">System Message</label>
+					<div class="composer-container">
+						<div class="composer-header-row">
+							<div class="composer-tabs">
+								<button type="button" id="composer-tab-prompt" class="composer-tab active" data-pane="prompt">Prompt</button>
+								<button type="button" id="composer-tab-system" class="composer-tab" data-pane="system">System</button>
+							</div>
 
-						<label class="toggle-label" title="Use optimal default instructions">
-							<input type="checkbox" id="use-default-system" />
-							Default
-						</label>
+							<label class="toggle-label hidden" id="system-default-toggle" title="Use optimal default instructions">
+								<input type="checkbox" id="use-default-system" />
+								Default
+							</label>
+						</div>
+
+						<textarea id="prompt" placeholder="A cat in a banana suit..."></textarea>
+						<textarea id="system-message" class="hidden" placeholder="Optional system instructions..."></textarea>
 					</div>
-
-					<textarea id="system-message" placeholder="Optional system instructions..."></textarea>
-				</div>
-
-				<div class="form-group">
-					<label for="prompt">Prompt</label>
-
-					<textarea id="prompt" placeholder="A cat in a banana suit..."></textarea>
 				</div>
 
 				<div class="form-group">
@@ -133,6 +147,28 @@
 				<button id="close-image-modal" class="close-btn">&times;</button>
 
 				<img id="full-image" src="" alt="Full Resolution" />
+			</div>
+		</div>
+
+		<div id="save-preset-modal" class="modal">
+			<div class="background"></div>
+
+			<div class="content">
+				<div class="header">Save Setup</div>
+
+				<div class="body">
+					<div id="save-preset-error" class="error"></div>
+
+					<div class="form-group">
+						<label for="preset-name-input">Setup Name</label>
+						<input type="text" id="preset-name-input" placeholder="e.g. Anime Style" autocomplete="off" />
+					</div>
+				</div>
+
+				<div class="buttons" style="gap: 12px; margin-top: 16px;">
+					<button id="cancel-save-preset-btn" class="modal-btn secondary">Cancel</button>
+					<button id="confirm-save-preset-btn" class="modal-btn primary">Save</button>
+				</div>
 			</div>
 		</div>
 
