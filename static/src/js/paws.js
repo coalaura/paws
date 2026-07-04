@@ -561,7 +561,7 @@ function loadSettings(job) {
 
 	renderReferenceImages();
 	updateResolutionEstimate();
-	clearPresetSelection();
+	syncPresetSelection();
 }
 
 function createJobDOM(job) {
@@ -1498,7 +1498,7 @@ $useDefaultSystem.addEventListener("change", event => {
 	store("system", $systemMessage.value);
 
 	if (!isApplyingPreset) {
-		clearPresetSelection();
+		syncPresetSelection();
 	}
 });
 
@@ -1509,7 +1509,7 @@ $systemMessage.addEventListener("input", () => {
 	}
 
 	if (!isApplyingPreset) {
-		clearPresetSelection();
+		syncPresetSelection();
 	}
 });
 
@@ -1517,7 +1517,7 @@ $prompt.addEventListener("input", () => {
 	store("prompt", $prompt.value);
 
 	if (!isApplyingPreset) {
-		clearPresetSelection();
+		syncPresetSelection();
 	}
 });
 
@@ -1535,7 +1535,7 @@ $model.addEventListener("change", () => {
 	updateAvailableResolutions();
 
 	if (!isApplyingPreset) {
-		clearPresetSelection();
+		syncPresetSelection();
 	}
 });
 
@@ -1713,12 +1713,40 @@ function applyPreset(preset) {
 	}
 }
 
-function clearPresetSelection() {
+function findMatchingPreset() {
+	const current = snapshotCurrentPresetState();
+
+	return presets.find(preset =>
+		preset.model === current.model &&
+		preset.prompt === current.prompt &&
+		preset.system === current.system &&
+		preset.useDefaultSystem === current.useDefaultSystem
+	);
+}
+
+function syncPresetSelection() {
+	if (!$presetSelect) {
+		return;
+	}
+
+	const match = findMatchingPreset();
+
+	if (match) {
+		activePresetName = match.name;
+
+		$presetSelect.value = match.name;
+
+		if ($deletePresetBtn) {
+			$deletePresetBtn.disabled = false;
+		}
+
+		return;
+	}
+
 	activePresetName = "";
 
-	if ($presetSelect) {
-		$presetSelect.value = "";
-	}
+	$presetSelect.value = "";
+
 	if ($deletePresetBtn) {
 		$deletePresetBtn.disabled = true;
 	}
@@ -1876,6 +1904,8 @@ document.addEventListener("keydown", event => {
 });
 
 renderPresets();
+
+syncPresetSelection();
 
 setComposerPane(activeComposerPane, false);
 

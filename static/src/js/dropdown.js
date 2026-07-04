@@ -766,6 +766,17 @@ class Dropdown {
 		}
 
 		if (this.#selected === false) {
+			for (const key in this.#options) {
+				const option = this.#options[key];
+
+				option.el.classList.remove("active");
+				option.favoriteClone?.classList?.remove("active");
+
+				for (const tab in option.clones) {
+					option.clones[tab].classList.remove("active");
+				}
+			}
+
 			const placeholder = this.#_select.querySelector("option[disabled]");
 			this.#_selected.title = placeholder ? placeholder.textContent : "";
 			this.#_selected.textContent = placeholder ? placeholder.textContent : "";
