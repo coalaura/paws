@@ -7,6 +7,7 @@ import deleteSvg from "../css/icons/delete.svg?raw";
 import downloadSvg from "../css/icons/download.svg?raw";
 import editSvg from "../css/icons/edit.svg?raw";
 import imageSvg from "../css/icons/image.svg?raw";
+import compareSvg from "../css/icons/compare.svg?raw";
 import moreSvg from "../css/icons/more.svg?raw";
 import retrySvg from "../css/icons/retry.svg?raw";
 
@@ -62,6 +63,15 @@ const $loader = document.getElementById("global-loader"),
 	$imageModal = document.getElementById("image-modal"),
 	$fullImage = document.getElementById("full-image"),
 	$closeImageModal = document.getElementById("close-image-modal"),
+	$comparisonModal = document.getElementById("comparison-modal"),
+	$comparisonBefore = document.getElementById("comparison-before"),
+	$comparisonAfter = document.getElementById("comparison-after"),
+	$comparisonBeforeClip = document.getElementById("comparison-before-clip"),
+	$comparisonDivider = document.getElementById("comparison-divider"),
+	$comparisonRange = document.getElementById("comparison-range"),
+	$comparisonReferencePicker = document.getElementById("comparison-reference-picker"),
+	$comparisonReferenceSelect = document.getElementById("comparison-reference-select"),
+	$closeComparisonModal = document.getElementById("close-comparison-modal"),
 	$usageDisplay = document.getElementById("usage-display"),
 	$maxRefResolution = document.getElementById("max-ref-resolution"),
 	$presetSelect = document.getElementById("preset-select"),
@@ -168,6 +178,45 @@ function openImageModal(src) {
 	$fullImage.src = src;
 
 	$imageModal.classList.add("open");
+}
+
+function updateComparisonPosition() {
+	const position = $comparisonRange.value;
+
+	$comparisonBeforeClip.style.clipPath = `inset(0 ${100 - position}% 0 0)`;
+	$comparisonDivider.style.left = `${position}%`;
+}
+
+function openComparisonModal(job) {
+	const refs = job.payload?.images || [];
+
+	if (!job.result || refs.length === 0) {
+		return;
+	}
+
+	$comparisonReferenceSelect.nextElementSibling?.remove();
+	$comparisonReferenceSelect.style.display = "";
+	$comparisonReferenceSelect.replaceChildren();
+
+	refs.forEach((src, index) => {
+		const option = document.createElement("option");
+
+		option.value = src;
+		option.textContent = `Reference ${index + 1}`;
+
+		$comparisonReferenceSelect.appendChild(option);
+	});
+
+	dropdown($comparisonReferenceSelect);
+
+	$comparisonReferencePicker.classList.toggle("hidden", refs.length < 2);
+	$comparisonAfter.src = job.result;
+	$comparisonBefore.src = refs[0];
+	$comparisonRange.value = 50;
+
+	updateComparisonPosition();
+
+	$comparisonModal.classList.add("open");
 }
 
 function readFileAsDataUrl(file) {
@@ -646,6 +695,8 @@ function createJobDOM(job) {
 
 	const useRefItem = document.createElement("div");
 
+	const refs = job.payload.images || [];
+
 	useRefItem.className = "job-menu-item";
 	useRefItem.innerHTML = `${imageSvg} Use as Reference`;
 
@@ -654,12 +705,23 @@ function createJobDOM(job) {
 		useRefItem.style.pointerEvents = "none";
 	}
 
+	const compareItem = document.createElement("div");
+
+	compareItem.className = "job-menu-item";
+	compareItem.innerHTML = `${compareSvg} Compare Before / After`;
+
+	if (!job.result || refs.length === 0) {
+		compareItem.style.opacity = "0.5";
+		compareItem.style.pointerEvents = "none";
+	}
+
 	const loadSettingsItem = document.createElement("div");
 
 	loadSettingsItem.className = "job-menu-item";
 	loadSettingsItem.innerHTML = `${editSvg} Load Settings`;
 
 	menu.appendChild(useRefItem);
+	menu.appendChild(compareItem);
 	menu.appendChild(loadSettingsItem);
 
 	actions.appendChild(closeBtn);
@@ -706,8 +768,6 @@ function createJobDOM(job) {
 	const meta = document.createElement("div");
 
 	meta.className = "job-meta";
-
-	const refs = job.payload.images || [];
 
 	if (refs.length > 0) {
 		const refsDiv = document.createElement("div");
@@ -821,6 +881,7 @@ function createJobDOM(job) {
 		moreBtn: moreBtn,
 		menu: menu,
 		useRefItem: useRefItem,
+		compareItem: compareItem,
 		loadSettingsItem: loadSettingsItem,
 		$img: img,
 		$spinner: spinner,
@@ -904,6 +965,13 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 
 	ui.useRefItem.addEventListener("click", () => {
 		useAsReference(job);
+
+		ui.menu.classList.remove("open");
+		ui.card.classList.remove("menu-open");
+	});
+
+	ui.compareItem.addEventListener("click", () => {
+		openComparisonModal(job);
 
 		ui.menu.classList.remove("open");
 		ui.card.classList.remove("menu-open");
@@ -1138,6 +1206,11 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 					if (ui.useRefItem) {
 						ui.useRefItem.style.opacity = "1";
 						ui.useRefItem.style.pointerEvents = "auto";
+					}
+
+					if (ui.compareItem && (job.payload.images || []).length > 0) {
+						ui.compareItem.style.opacity = "1";
+						ui.compareItem.style.pointerEvents = "auto";
 					}
 
 					ui.$img.draggable = true;
@@ -1573,6 +1646,20 @@ $closeImageModal.addEventListener("click", () => {
 	$imageModal.classList.remove("open");
 });
 
+$comparisonRange.addEventListener("input", updateComparisonPosition);
+
+$comparisonReferenceSelect.addEventListener("change", () => {
+	$comparisonBefore.src = $comparisonReferenceSelect.value;
+});
+
+$comparisonModal.querySelector(".background").addEventListener("click", () => {
+	$comparisonModal.classList.remove("open");
+});
+
+$closeComparisonModal.addEventListener("click", () => {
+	$comparisonModal.classList.remove("open");
+});
+
 resDropdown = dropdown($resolution);
 
 dropdown($aspectRatio);
@@ -1899,6 +1986,10 @@ document.addEventListener("keydown", event => {
 
 		if ($imageModal?.classList.contains("open")) {
 			$imageModal.classList.remove("open");
+		}
+
+		if ($comparisonModal?.classList.contains("open")) {
+			$comparisonModal.classList.remove("open");
 		}
 	}
 });

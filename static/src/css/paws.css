@@ -846,6 +846,181 @@ input:focus {
 	transform: scale(1.1);
 }
 
+.comparison-modal-content {
+	padding: 0 !important;
+	background: var(--c-mantle) !important;
+	min-width: 0 !important;
+	max-width: 94vw !important;
+	max-height: 94vh !important;
+	width: min(1100px, 94vw);
+	gap: 0 !important;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.comparison-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	min-height: 52px;
+	padding: 10px 52px 10px 14px;
+	background: var(--c-surface0);
+	border-bottom: 1px solid var(--c-surface1);
+}
+
+.comparison-title {
+	font-size: 14px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
+}
+
+.comparison-picker {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--c-subtext0);
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+
+.comparison-picker .dropdown {
+	width: 148px;
+	font-size: 12px;
+	box-shadow: none;
+	z-index: 20;
+}
+
+.comparison-picker .dropdown .selected {
+	padding: 7px 9px;
+}
+
+.comparison-viewer {
+	position: relative;
+	width: 100%;
+	height: min(72vh, 720px);
+	min-height: 240px;
+	overflow: hidden;
+	background: var(--c-crust);
+	user-select: none;
+}
+
+.comparison-image {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.comparison-before-clip {
+	position: absolute;
+	inset: 0;
+}
+
+.comparison-before-clip .comparison-image {
+	width: 100%;
+}
+
+.comparison-divider {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	width: 2px;
+	background: var(--c-mauve);
+	box-shadow: 0 0 0 1px rgba(24, 25, 38, 0.5), 0 0 10px rgba(24, 25, 38, 0.7);
+	pointer-events: none;
+}
+
+.comparison-divider::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 28px;
+	height: 28px;
+	transform: translate(-50%, -50%);
+	background: var(--c-mauve);
+	border: 2px solid var(--c-crust);
+	border-radius: 50%;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.comparison-label {
+	position: absolute;
+	top: 10px;
+	padding: 4px 7px;
+	background: rgba(24, 25, 38, 0.82);
+	border: 1px solid var(--c-surface1);
+	border-radius: 2px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	pointer-events: none;
+}
+
+.comparison-label-before {
+	left: 10px;
+}
+
+.comparison-label-after {
+	right: 10px;
+}
+
+.comparison-range {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	opacity: 0;
+	cursor: ew-resize;
+}
+
+.comparison-modal-content .close-btn {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	background: var(--c-surface1);
+	color: var(--c-text);
+	border: 1px solid var(--c-surface2);
+	border-radius: 2px;
+	width: 28px;
+	height: 28px;
+	font-size: 18px;
+	cursor: pointer;
+	z-index: 10;
+}
+
+.comparison-modal-content .close-btn:hover {
+	background: var(--c-red);
+	border-color: var(--c-red);
+	color: var(--c-crust);
+}
+
+@media (max-width: 560px) {
+	.comparison-toolbar {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 8px;
+		padding-right: 52px;
+	}
+
+	.comparison-picker .dropdown {
+		width: min(220px, 70vw);
+	}
+
+	.comparison-viewer {
+		height: 64vh;
+		min-height: 200px;
+	}
+}
+
 .spinner {
 	position: absolute;
 	width: 32px;
@@ -1121,6 +1296,7 @@ input:focus {
 	from {
 		opacity: 0;
 	}
+
 	to {
 		opacity: 1;
 	}
