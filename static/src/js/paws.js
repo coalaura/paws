@@ -46,6 +46,7 @@ const $loader = document.getElementById("global-loader"),
 	$systemMessage = document.getElementById("system-message"),
 	$useDefaultSystem = document.getElementById("use-default-system"),
 	$prompt = document.getElementById("prompt"),
+	$appVersion = document.getElementById("app-version"),
 	$refImagesContainer = document.getElementById("reference-images"),
 	$addRefBtn = document.getElementById("add-ref-btn"),
 	$fileInput = document.getElementById("file-input"),
@@ -1294,6 +1295,11 @@ async function loadData() {
 		}
 
 		const data = await response.json();
+
+		if (data.version != null) {
+			$appVersion.textContent = data.version;
+			$appVersion.title = `Paws ${$appVersion.textContent}`;
+		}
 
 		if (data.auth && !data.authenticated) {
 			$authentication.classList.add("open");

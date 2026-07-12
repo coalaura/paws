@@ -101,12 +101,28 @@ body {
 }
 
 .header {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: 12px;
 	padding: 20px 24px;
 	border-bottom: 1px solid var(--c-surface0);
 	flex-shrink: 0;
+}
+
+.app-version {
+	position: absolute;
+	left: 20px;
+	bottom: -7px;
+	z-index: 1;
+	padding: 0 5px;
+	background: var(--c-mantle);
+	color: var(--c-overlay0);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 10px;
+	line-height: 14px;
+	letter-spacing: 0.2px;
+	user-select: none;
 }
 
 .header img {
