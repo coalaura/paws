@@ -34,6 +34,18 @@ func NewImagePricing(k ...float64) *ImagePricing {
 
 // Since there is no reliable image output pricing data :(
 var ImageModelPricing = map[string]*ImagePricing{
+	// No reliable pricing, only by million tokens, determined by testing
+	"microsoft/mai-image-2.5-pro": NewImagePricing(0.111), // No 2K or 4K
+
+	// https://openrouter.ai/krea/krea-2-large
+	"krea/krea-2-large": NewImagePricing(0.065), // No 2K or 4K
+
+	// https://openrouter.ai/krea/krea-2-medium
+	"krea/krea-2-medium": NewImagePricing(0.035), // No 2K or 4K
+
+	// https://openrouter.ai/krea/krea-2-medium-turbo
+	"krea/krea-2-medium-turbo": NewImagePricing(0.0175), // No 2K or 4K
+
 	// google forgot to add it to their pricing page, determined by testing
 	"google/gemini-3.1-flash-lite-image": NewImagePricing(0.034), // No 2K or 4K
 
