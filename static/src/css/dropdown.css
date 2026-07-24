@@ -381,17 +381,21 @@
 }
 
 .dropdown .opts .tab.favorites-container .opt:active,
-.dropdown .opts .tab.favorites-container .opt.dragging {
+.dropdown .opts .tab.favorites-container .opt.dragging,
+.dropdown .opts .tab .opt.reorder-item:active,
+.dropdown .opts .tab .opt.reorder-item.dragging {
 	cursor: grabbing;
 	opacity: 0.5;
 }
 
-.dropdown .opts .tab.favorites-container .opt.dragging {
+.dropdown .opts .tab.favorites-container .opt.dragging,
+.dropdown .opts .tab .opt.reorder-item.dragging {
 	background: var(--c-mauve);
 	color: var(--c-base);
 }
 
-.dropdown .opts .tab.favorites-container .drop-indicator {
+.dropdown .opts .tab.favorites-container .drop-indicator,
+.dropdown .opts .tab .drop-indicator {
 	height: 2px;
 	background: var(--c-mauve);
 	margin: 2px 0;

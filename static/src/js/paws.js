@@ -1738,7 +1738,21 @@ for (let i = jobs.length - 1; i >= 0; i--) {
 	setupJobUI(ui, job);
 }
 
+function normalizePresetOrder() {
+	const names = presets.map(preset => preset.name);
+
+	presetOrder = presetOrder.filter(name => names.includes(name));
+
+	for (const name of names) {
+		if (!presetOrder.includes(name)) {
+			presetOrder.push(name);
+		}
+	}
+}
+
 function sortPresetsByOrder(list = []) {
+	normalizePresetOrder();
+
 	const orderMap = new Map(presetOrder.map((name, index) => [name, index]));
 
 	return [...list].sort((a, b) => {
@@ -1771,6 +1785,7 @@ function renderPresets(selectedName = "") {
 
 		unsavedOption.value = "__preset__";
 		unsavedOption.textContent = "unsaved*";
+		unsavedOption.dataset.noFavorite = "";
 
 		$presetSelect.appendChild(unsavedOption);
 	}
@@ -1792,13 +1807,7 @@ function renderPresets(selectedName = "") {
 		$deletePresetBtn.disabled = true;
 	}
 
-	const existingDropdown = $presetSelect.nextElementSibling;
-
-	if (existingDropdown?.classList.contains("dropdown")) {
-		existingDropdown.remove();
-	}
-
-	dropdown($presetSelect);
+	dropdown($presetSelect, { reorderable: true });
 }
 
 function applyPreset(preset) {
@@ -1891,7 +1900,7 @@ function syncPresetSelection() {
 	}
 }
 
-$presetSelect.addEventListener("favorite", event => {
+$presetSelect.addEventListener("reorder", event => {
 	presetOrder = event.detail;
 
 	store("presetOrder", presetOrder);

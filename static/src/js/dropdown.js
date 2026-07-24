@@ -41,6 +41,7 @@ class Dropdown {
 
 	#favoriteOrder = [];
 	#favoritesEnabled = false;
+	#reorderable = false;
 
 	#events = {};
 
@@ -51,14 +52,26 @@ class Dropdown {
 	};
 
 	constructor(el, favorites = false, tabs = []) {
+		if (el.__pawsDropdown) {
+			el.__pawsDropdown.destroy();
+		}
+
+		el.__pawsDropdown = this;
+
 		this.#_select = el;
 
 		this.#search = "searchable" in el.dataset;
 		this.#multiple = !!el.multiple || "multiple" in el.dataset;
 		this.#tabs = Array.isArray(tabs) ? tabs : [];
 
-		this.#favoritesEnabled = Array.isArray(favorites);
-		this.#favoriteOrder = Array.isArray(favorites) ? [...favorites] : [];
+		if (favorites && typeof favorites === "object" && !Array.isArray(favorites)) {
+			this.#reorderable = !!favorites.reorderable;
+			this.#favoritesEnabled = false;
+			this.#favoriteOrder = [];
+		} else {
+			this.#favoritesEnabled = Array.isArray(favorites);
+			this.#favoriteOrder = Array.isArray(favorites) ? [...favorites] : [];
+		}
 
 		const allowedTabs = this.#tabs.length ? new Set(this.#tabs) : null;
 
@@ -91,6 +104,7 @@ class Dropdown {
 				icon: option.dataset.icon,
 				favorite: isFavorite,
 				disabled: isDisabled,
+				noFavorite: "noFavorite" in option.dataset,
 				new: isNew,
 				prices: prices,
 				tabs: optionTabs,
@@ -332,6 +346,10 @@ class Dropdown {
 			option.el = _opt;
 			option.clones = {};
 
+			if (this.#reorderable && this.#isReorderableOption(option)) {
+				this.#bindReorderDrag(_opt, option);
+			}
+
 			// add to custom tabs
 			for (const tab of option.tabs) {
 				const tabMeta = this.#tabData[tab];
@@ -399,6 +417,10 @@ class Dropdown {
 			}
 
 			this.#updateFavoritesCount();
+		}
+
+		if (this.#reorderable) {
+			this.#setupListDragAndDrop(this.#all.container, () => this.#updateReorderOrderFromDOM());
 		}
 
 		// live search (if enabled)
@@ -508,9 +530,43 @@ class Dropdown {
 		this.#_search?.focus();
 	}
 
-	#setupFavoritesDragAndDrop() {
-		const container = this.#favorites.container;
+	#isReorderableOption(option) {
+		return !option.disabled && !option.noFavorite;
+	}
 
+	#bindReorderDrag(el, option) {
+		el.setAttribute("draggable", "true");
+		el.classList.add("reorder-item");
+
+		el.addEventListener("dragstart", event => {
+			event.dataTransfer.setData("application/paws-dropdown-reorder", option.value);
+			event.dataTransfer.setData("text/plain", option.value);
+			event.dataTransfer.effectAllowed = "move";
+
+			el.classList.add("dragging");
+
+			this.#dragState.draggedOption = option;
+			this.#dragState.container = this.#all.container;
+		});
+
+		el.addEventListener("dragend", () => {
+			el.classList.remove("dragging");
+
+			this.#dragState.draggedOption = false;
+
+			const indicator = this.#dragState.dropIndicator;
+
+			if (indicator?.parentNode) {
+				indicator.remove();
+			}
+		});
+	}
+
+	#setupFavoritesDragAndDrop() {
+		this.#setupListDragAndDrop(this.#favorites.container, () => this.#updateFavoriteOrderFromDOM());
+	}
+
+	#setupListDragAndDrop(container, onDrop) {
 		this.#dragState.container = container;
 
 		// drop indicator
@@ -519,7 +575,12 @@ class Dropdown {
 		this.#dragState.dropIndicator.className = "drop-indicator";
 
 		container.addEventListener("dragover", event => {
+			if (!this.#dragState.draggedOption) {
+				return;
+			}
+
 			event.preventDefault();
+			event.dataTransfer.dropEffect = "move";
 
 			this.#handleDragOver(event.clientY);
 		});
@@ -527,9 +588,13 @@ class Dropdown {
 		document.addEventListener("dragover", this.#handleDocumentDragOver);
 
 		container.addEventListener("drop", event => {
+			if (!this.#dragState.draggedOption) {
+				return;
+			}
+
 			event.preventDefault();
 
-			this.#handleDrop();
+			this.#handleDrop(onDrop);
 		});
 
 		container.addEventListener("dragleave", event => {
@@ -576,7 +641,7 @@ class Dropdown {
 		}
 	}
 
-	#handleDrop() {
+	#handleDrop(onDrop) {
 		const container = this.#dragState.container,
 			dropIndicator = this.#dragState.dropIndicator,
 			draggable = container.querySelector(".dragging");
@@ -584,12 +649,71 @@ class Dropdown {
 		if (draggable && dropIndicator.parentNode) {
 			dropIndicator.before(draggable);
 
-			this.#updateFavoriteOrderFromDOM();
+			if (this.#reorderable) {
+				this.#pinFixedOptions(container);
+			}
+
+			onDrop?.();
+		}
+	}
+
+	#pinFixedOptions(container) {
+		const fixed = [...container.querySelectorAll(".opt:not(.reorder-item)")];
+
+		for (let i = fixed.length - 1; i >= 0; i--) {
+			container.insertBefore(fixed[i], container.firstChild);
+		}
+	}
+
+	#updateReorderOrderFromDOM() {
+		const newOrder = [];
+
+		this.#all.container.querySelectorAll(".opt").forEach(el => {
+			const option = this.#options.find(opt => opt.el === el);
+
+			if (option && this.#isReorderableOption(option)) {
+				newOrder.push(option.value);
+			}
+		});
+
+		this.#syncSelectOrder(newOrder);
+		this.#trigger("reorder", newOrder);
+	}
+
+	#syncSelectOrder(order) {
+		const select = this.#_select,
+			fixed = [],
+			byValue = new Map();
+
+		for (const option of [...select.options]) {
+			if (option.disabled || option.value === "" || "noFavorite" in option.dataset) {
+				fixed.push(option);
+			} else {
+				byValue.set(option.value, option);
+			}
+		}
+
+		for (const option of fixed) {
+			select.appendChild(option);
+		}
+
+		for (const value of order) {
+			const option = byValue.get(value);
+
+			if (option) {
+				select.appendChild(option);
+				byValue.delete(value);
+			}
+		}
+
+		for (const option of byValue.values()) {
+			select.appendChild(option);
 		}
 	}
 
 	#getDragAfterElement(container, y) {
-		const draggableElements = [...container.querySelectorAll(".opt:not(.dragging)")];
+		const selector = this.#reorderable ? ".opt.reorder-item:not(.dragging)" : ".opt:not(.dragging)",
+			draggableElements = [...container.querySelectorAll(selector)];
 
 		return draggableElements.reduce(
 			(closest, child) => {
@@ -891,6 +1015,10 @@ class Dropdown {
 	}
 
 	#makeFavorite(option) {
+		if (option.noFavorite || option.disabled) {
+			return;
+		}
+
 		option.favorite = !option.favorite;
 
 		if (!option.favorite) {
@@ -958,6 +1086,16 @@ class Dropdown {
 		}
 
 		this.#updateFavoritesCount();
+	}
+
+	destroy() {
+		document.removeEventListener("dragover", this.#handleDocumentDragOver);
+
+		if (this.#_select?.__pawsDropdown === this) {
+			delete this.#_select.__pawsDropdown;
+		}
+
+		this.#_dropdown?.remove();
 	}
 
 	#clearFilters() {
