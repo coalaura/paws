@@ -100,7 +100,8 @@ let rawRefs = load("referenceImages", []),
 	presetOrder = load("presetOrder", []),
 	activeComposerPane = load("activeComposerPane", "prompt"),
 	activePresetName = "",
-	unsavedPreset = null;
+	unsavedPreset = null,
+	pageDragDepth = 0;
 
 $useDefaultSystem.checked = useDefaultSys;
 
@@ -992,6 +993,7 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 			return;
 		}
 
+		event.dataTransfer.setData("application/paws-result-image", "true");
 		event.dataTransfer.setData("text/plain", job.result);
 		event.dataTransfer.effectAllowed = "copy";
 	});
@@ -1477,33 +1479,77 @@ $fileInput.addEventListener("change", event => {
 	$fileInput.value = "";
 });
 
-$refImagesContainer.addEventListener("dragover", event => {
-	event.preventDefault();
-	event.dataTransfer.dropEffect = "copy";
+function isRefReorderDrag(dataTransfer) {
+	return Array.from(dataTransfer?.types || []).includes("application/paws-ref-sort");
+}
 
-	$refImagesContainer.classList.add("drag-over");
-});
-
-$refImagesContainer.addEventListener("dragleave", event => {
-	if (!$refImagesContainer.contains(event.relatedTarget)) {
-		$refImagesContainer.classList.remove("drag-over");
+function isImageDrop(dataTransfer) {
+	if (!dataTransfer || isRefReorderDrag(dataTransfer)) {
+		return false;
 	}
-});
 
-$refImagesContainer.addEventListener("drop", async event => {
-	event.preventDefault();
+	const types = Array.from(dataTransfer.types);
 
-	$refImagesContainer.classList.remove("drag-over");
+	return types.includes("Files") || types.includes("application/paws-result-image");
+}
 
-	const types = Array.from(event.dataTransfer.types);
+function setPageDragOver(active) {
+	document.body.classList.toggle("drag-over", active);
 
-	if (types.includes("application/paws-ref-index")) {
+	$refImagesContainer.classList.toggle("drag-over", active);
+}
+
+document.addEventListener("dragenter", event => {
+	if (!isImageDrop(event.dataTransfer)) {
 		return;
 	}
 
-	const data = event.dataTransfer.getData("text/plain");
+	pageDragDepth++;
 
-	if (data?.startsWith("data:image")) {
+	setPageDragOver(true);
+});
+
+document.addEventListener("dragover", event => {
+	if (!isImageDrop(event.dataTransfer)) {
+		return;
+	}
+
+	event.preventDefault();
+	event.dataTransfer.dropEffect = "copy";
+});
+
+document.addEventListener("dragleave", event => {
+	if (!isImageDrop(event.dataTransfer)) {
+		return;
+	}
+
+	pageDragDepth = Math.max(0, pageDragDepth - 1);
+
+	if (pageDragDepth === 0) {
+		setPageDragOver(false);
+	}
+});
+
+document.addEventListener("drop", async event => {
+	pageDragDepth = 0;
+	setPageDragOver(false);
+
+	if (isRefReorderDrag(event.dataTransfer)) {
+		return;
+	}
+
+	const data = event.dataTransfer?.getData("text/plain");
+	const files = event.dataTransfer?.files;
+	const hasImageFiles = files && [...files].some(file => file.type.startsWith("image/"));
+	const hasDataImage = data?.startsWith("data:image");
+
+	if (!hasImageFiles && !hasDataImage) {
+		return;
+	}
+
+	event.preventDefault();
+
+	if (hasDataImage) {
 		if (referenceImages.length < MaxImages) {
 			const processed = await processRefImage(data);
 
@@ -1518,14 +1564,10 @@ $refImagesContainer.addEventListener("drop", async event => {
 		return;
 	}
 
-	const files = event.dataTransfer.files;
-
-	if (files.length > 0) {
-		await handleFiles(files);
-	}
+	await handleFiles(files);
 });
 
-$prompt.addEventListener("paste", async event => {
+document.addEventListener("paste", async event => {
 	const items = event.clipboardData?.items;
 
 	if (!items) {
@@ -1536,7 +1578,11 @@ $prompt.addEventListener("paste", async event => {
 
 	for (const item of items) {
 		if (item.type.startsWith("image/")) {
-			imageFiles.push(item.getAsFile());
+			const file = item.getAsFile();
+
+			if (file) {
+				imageFiles.push(file);
+			}
 		}
 	}
 

@@ -800,10 +800,22 @@ input:focus {
 	cursor: grabbing;
 }
 
+body.drag-over::after {
+	content: "";
+	position: fixed;
+	inset: 0;
+	z-index: 9998;
+	pointer-events: none;
+	border: 2px dashed var(--c-mauve);
+	background: color-mix(in srgb, var(--c-mauve) 8%, transparent);
+}
+
 #reference-images.drag-over {
 	outline: 2px dashed var(--c-mauve);
 	outline-offset: -2px;
 	background: color-mix(in srgb, var(--c-mauve) 10%, transparent);
+	position: relative;
+	z-index: 9999;
 }
 
 #reference-images.drag-over #add-ref-btn {
