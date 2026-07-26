@@ -25,17 +25,8 @@ func OpenRouterClient() *openrouter.Client {
 	return openrouter.NewClientWithConfig(*cc)
 }
 
-func OpenRouterStartImageStream(ctx context.Context, request openrouter.ImageGenerationRequest) (ImageGenerationStream, error) {
+func OpenRouterStartImageStream(ctx context.Context, request openrouter.ImageGenerationRequest) (openrouter.OpenrouterStream[openrouter.ImageGenerationStreamChunk], error) {
 	client := OpenRouterClient()
-
-	if request.Stream != nil && !*request.Stream {
-		resp, err := client.CreateImages(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		return ResponseAsStream(resp)
-	}
 
 	stream, err := client.CreateImagesStream(ctx, request)
 	if err != nil {
