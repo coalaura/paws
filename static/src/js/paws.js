@@ -1658,10 +1658,6 @@ $model.addEventListener("change", () => {
 	store("model", $model.value);
 
 	updateAvailableResolutions();
-
-	if (!isApplyingPreset) {
-		syncPresetSelection();
-	}
 });
 
 $resolution.addEventListener("change", () => {
@@ -1770,7 +1766,6 @@ function sortPresetsByOrder(list = []) {
 function snapshotCurrentPresetState(name = "") {
 	return {
 		name: name,
-		model: $model.value,
 		prompt: $prompt.value.trim(),
 		system: useDefaultSys ? $systemMessage.value.trim() : $systemMessage.value.trim() || "",
 		useDefaultSystem: useDefaultSys,
@@ -1818,14 +1813,6 @@ function applyPreset(preset) {
 	isApplyingPreset = true;
 
 	try {
-		if (preset.model) {
-			$model.value = preset.model;
-
-			store("model", preset.model);
-
-			$model.dispatchEvent(new Event("change"));
-		}
-
 		if (preset.useDefaultSystem !== undefined) {
 			$useDefaultSystem.checked = preset.useDefaultSystem;
 
@@ -1865,7 +1852,6 @@ function findMatchingPreset() {
 	const current = snapshotCurrentPresetState();
 
 	return presets.find(preset =>
-		preset.model === current.model &&
 		preset.prompt === current.prompt &&
 		preset.system === current.system &&
 		preset.useDefaultSystem === current.useDefaultSystem
