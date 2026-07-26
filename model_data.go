@@ -32,6 +32,18 @@ func NewImagePricing(k ...float64) *ImagePricing {
 	}
 }
 
+// Some models (primarily openai) will error if providing reference images and
+// setting stream=true, while documenting supports_streaming=true, so we need this
+// manual list, annoyingly.
+var ReferenceImageNoStreamingModels = [...]string{
+	"openai/gpt-image-2",
+	"openai/gpt-image-1-mini",
+	"openai/gpt-image-1",
+	"openai/gpt-5.4-image-2",
+	"openai/gpt-5-image-mini",
+	"openai/gpt-5-image",
+}
+
 // Since there is no reliable image output pricing data :(
 var ImageModelPricing = map[string]*ImagePricing{
 	// No reliable pricing, only by million tokens, determined by testing

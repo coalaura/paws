@@ -4,25 +4,19 @@ import (
 	"context"
 	"slices"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/coalaura/openingrouter"
 )
 
-type ModelPricing struct {
-	Input  float64       `json:"input"`
-	Output float64       `json:"output"`
-	Image  *ImagePricing `json:"image,omitempty"`
-}
-
 type Model struct {
-	ID      string       `json:"id"`
-	Created int64        `json:"created"`
-	Name    string       `json:"name"`
-	Pricing ModelPricing `json:"pricing"`
-	Author  string       `json:"author,omitempty"`
+	ID        string        `json:"id"`
+	Created   int64         `json:"created"`
+	Name      string        `json:"name"`
+	Pricing   *ImagePricing `json:"pricing,omitempty"`
+	Author    string        `json:"author,omitempty"`
+	CanStream bool          `json:"-"`
 }
 
 var (
@@ -88,30 +82,19 @@ func LoadModels() error {
 			continue
 		}
 
-		var (
-			input  float64
-			output float64
-		)
+		var noStreaming bool
 
 		if full, ok := base[model.Slug]; ok {
-			input, _ = strconv.ParseFloat(full.Pricing.Prompt, 64)
-			output, _ = strconv.ParseFloat(full.Pricing.Completion, 64)
-		} else {
-			input = model.Endpoint.Pricing.Prompt.Float64()
-			output = model.Endpoint.Pricing.Completion.Float64()
+			noStreaming = !full.SupportsStreaming
 		}
 
 		m := &Model{
-			ID:      model.Slug,
-			Created: model.CreatedAt.Unix(),
-			Name:    model.ShortName,
-			Author:  model.Author,
-
-			Pricing: ModelPricing{
-				Input:  input * 1000000,
-				Output: output * 1000000,
-				Image:  ImageModelPricing[model.Slug],
-			},
+			ID:        model.Slug,
+			Created:   model.CreatedAt.Unix(),
+			Name:      model.ShortName,
+			Author:    model.Author,
+			Pricing:   ImageModelPricing[model.Slug],
+			CanStream: !noStreaming,
 		}
 
 		newList = append(newList, m)

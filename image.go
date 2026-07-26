@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -111,8 +112,15 @@ func (r *ChatRequest) Parse() (*openrouter.ImageGenerationRequest, error) {
 		})
 	}
 
-	streamEnabled := true
-	request.Stream = &streamEnabled
+	stream := model.CanStream
+
+	if len(r.Images) > 0 && slices.Contains(ReferenceImageNoStreamingModels[:], request.Model) {
+		stream = false
+	}
+
+	log.Println("streaming", stream, request.Model)
+
+	request.Stream = &stream
 
 	return &request, nil
 }

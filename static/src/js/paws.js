@@ -293,16 +293,16 @@ function updateAvailableResolutions() {
 
 	const available = [];
 
-	if (selectedModel.pricing?.image) {
-		if (selectedModel.pricing.image.k_1 != null) {
+	if (selectedModel.pricing) {
+		if (selectedModel.pricing.k_1 != null) {
 			available.push("1K");
 		}
 
-		if (selectedModel.pricing.image.k_2 != null) {
+		if (selectedModel.pricing.k_2 != null) {
 			available.push("2K");
 		}
 
-		if (selectedModel.pricing.image.k_4 != null) {
+		if (selectedModel.pricing.k_4 != null) {
 			available.push("4K");
 		}
 	}
@@ -1330,8 +1330,8 @@ async function loadData() {
 					option.dataset.icon = `/labs/${model.author}.png`;
 				}
 
-				if (model.pricing?.image) {
-					const { k_1, k_2, k_4 } = model.pricing.image;
+				if (model.pricing) {
+					const { k_1, k_2, k_4 } = model.pricing;
 
 					const getPriceClass = price => {
 						if (price > 0.12) {

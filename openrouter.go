@@ -25,28 +25,35 @@ func OpenRouterClient() *openrouter.Client {
 	return openrouter.NewClientWithConfig(*cc)
 }
 
-func OpenRouterStartImageStream(ctx context.Context, request openrouter.ImageGenerationRequest) (*openrouter.ImageGenerationStream, error) {
+func OpenRouterStartImageStream(ctx context.Context, request openrouter.ImageGenerationRequest) (ImageGenerationStream, error) {
 	client := OpenRouterClient()
+
+	if request.Stream != nil && !*request.Stream {
+		resp, err := client.CreateImages(ctx, request)
+		if err != nil {
+			return nil, err
+		}
+
+		return ResponseAsStream(resp)
+	}
 
 	stream, err := client.CreateImagesStream(ctx, request)
 	if err != nil {
-		log.Warnln(err)
-
 		return nil, err
 	}
 
 	return stream, nil
 }
 
-func OpenRouterListModels(ctx context.Context) (map[string]openrouter.Model, error) {
+func OpenRouterListModels(ctx context.Context) (map[string]openrouter.ImageModel, error) {
 	client := OpenRouterClient()
 
-	models, err := client.ListModels(ctx)
+	models, err := client.ListImageModels(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	mp := make(map[string]openrouter.Model, len(models))
+	mp := make(map[string]openrouter.ImageModel, len(models))
 
 	for _, model := range models {
 		mp[model.ID] = model
