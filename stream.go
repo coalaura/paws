@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/revrost/go-openrouter"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -71,10 +70,6 @@ func NewChunk(typ ChunkType, data any) *Chunk {
 }
 
 func GetErrorMessage(err error) string {
-	if apiErr, ok := err.(*openrouter.APIError); ok {
-		return apiErr.Error()
-	}
-
 	return err.Error()
 }
 

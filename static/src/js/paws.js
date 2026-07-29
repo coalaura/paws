@@ -320,7 +320,8 @@ function updateResolutionEstimate() {
 	const res = $resolution.value,
 		aspect = $aspectRatio.value;
 
-	const $valSpan = document.getElementById("resolution-estimate-val");
+	const $valSpan = document.getElementById("resolution-estimate-val"),
+		$costSpan = document.getElementById("resolution-estimate-cost");
 
 	if (!$valSpan) {
 		return;
@@ -375,6 +376,35 @@ function updateResolutionEstimate() {
 	}
 
 	$valSpan.textContent = `${w64} × ${h64} px`;
+
+	if (!$costSpan) {
+		return;
+	}
+
+	const selectedModel = modelsData.find(mdl => mdl.id === $model.value);
+
+	let price = null;
+
+	if (selectedModel?.pricing) {
+		if (res === "4K") {
+			price = selectedModel.pricing.k_4;
+		} else if (res === "2K") {
+			price = selectedModel.pricing.k_2;
+		} else {
+			price = selectedModel.pricing.k_1;
+		}
+	}
+
+	if (price == null) {
+		$costSpan.hidden = true;
+		$costSpan.textContent = "";
+
+		return;
+	}
+
+	$costSpan.textContent = `~${formatMoney(price)}`;
+	$costSpan.hidden = false;
+	$sep.hidden = false;
 }
 
 function setComposerPane(pane, persist = true) {

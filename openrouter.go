@@ -5,30 +5,23 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/revrost/go-openrouter"
+	"github.com/coalaura/openingrouter"
 )
 
-func init() {
-	openrouter.DisableLogs()
+func OpenRouterClient() *openingrouter.Client {
+	return openingrouter.NewClient(env.Tokens.OpenRouter,
+		openingrouter.WithTitle("Paws"),
+		openingrouter.WithReferer("https://github.com/coalaura/paws"),
+		openingrouter.WithClient(&http.Client{
+			Timeout: time.Duration(env.Settings.Timeout) * time.Second,
+		}),
+	)
 }
 
-func OpenRouterClient() *openrouter.Client {
-	cc := openrouter.DefaultConfig(env.Tokens.OpenRouter)
-
-	cc.XTitle = "Paws"
-	cc.HttpReferer = "https://github.com/coalaura/paws"
-
-	cc.HTTPClient = &http.Client{
-		Timeout: time.Duration(env.Settings.Timeout) * time.Second,
-	}
-
-	return openrouter.NewClientWithConfig(*cc)
-}
-
-func OpenRouterStartImageStream(ctx context.Context, request openrouter.ImageGenerationRequest) (openrouter.OpenrouterStream[openrouter.ImageGenerationStreamChunk], error) {
+func OpenRouterStartImageStream(ctx context.Context, request openingrouter.ImageGenerationRequest) (openingrouter.OpenrouterStream[openingrouter.ImageStreamEvent], error) {
 	client := OpenRouterClient()
 
-	stream, err := client.CreateImagesStream(ctx, request)
+	stream, err := client.GenerateImageStream(ctx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +29,7 @@ func OpenRouterStartImageStream(ctx context.Context, request openrouter.ImageGen
 	return stream, nil
 }
 
-func OpenRouterListModels(ctx context.Context) (map[string]openrouter.ImageModel, error) {
+func OpenRouterListModels(ctx context.Context) (map[string]openingrouter.ImageModel, error) {
 	client := OpenRouterClient()
 
 	models, err := client.ListImageModels(ctx)
@@ -44,7 +37,7 @@ func OpenRouterListModels(ctx context.Context) (map[string]openrouter.ImageModel
 		return nil, err
 	}
 
-	mp := make(map[string]openrouter.ImageModel, len(models))
+	mp := make(map[string]openingrouter.ImageModel, len(models))
 
 	for _, model := range models {
 		mp[model.ID] = model

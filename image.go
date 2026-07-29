@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/revrost/go-openrouter"
+	"github.com/coalaura/openingrouter"
 )
 
 type ImageConfig struct {
@@ -29,8 +29,8 @@ type ChatRequest struct {
 	Images []string    `json:"images"`
 }
 
-func (r *ChatRequest) Parse() (*openrouter.ImageGenerationRequest, error) {
-	var request openrouter.ImageGenerationRequest
+func (r *ChatRequest) Parse() (*openingrouter.ImageGenerationRequest, error) {
+	var request openingrouter.ImageGenerationRequest
 
 	model := GetModel(r.Model)
 	if model == nil {
@@ -57,56 +57,56 @@ func (r *ChatRequest) Parse() (*openrouter.ImageGenerationRequest, error) {
 
 	switch r.Image.Resolution {
 	case "512":
-		request.Resolution = openrouter.ImageResolution512
+		request.Resolution = openingrouter.ImageResolution512
 	case "2K":
-		request.Resolution = openrouter.ImageResolution2K
+		request.Resolution = openingrouter.ImageResolution2K
 	case "4K":
-		request.Resolution = openrouter.ImageResolution4K
+		request.Resolution = openingrouter.ImageResolution4K
 	default:
-		request.Resolution = openrouter.ImageResolution1K
+		request.Resolution = openingrouter.ImageResolution1K
 	}
 
 	switch r.Image.Aspect {
 	case "1:1":
-		request.AspectRatio = openrouter.ImageAspectRatio1x1
+		request.AspectRatio = openingrouter.ImageAspectRatio1x1
 	case "1:2":
-		request.AspectRatio = openrouter.ImageAspectRatio1x2
+		request.AspectRatio = openingrouter.ImageAspectRatio1x2
 	case "1:4":
-		request.AspectRatio = openrouter.ImageAspectRatio1x4
+		request.AspectRatio = openingrouter.ImageAspectRatio1x4
 	case "1:8":
-		request.AspectRatio = openrouter.ImageAspectRatio1x8
+		request.AspectRatio = openingrouter.ImageAspectRatio1x8
 	case "2:1":
-		request.AspectRatio = openrouter.ImageAspectRatio2x1
+		request.AspectRatio = openingrouter.ImageAspectRatio2x1
 	case "2:3":
-		request.AspectRatio = openrouter.ImageAspectRatio2x3
+		request.AspectRatio = openingrouter.ImageAspectRatio2x3
 	case "3:2":
-		request.AspectRatio = openrouter.ImageAspectRatio3x2
+		request.AspectRatio = openingrouter.ImageAspectRatio3x2
 	case "3:4":
-		request.AspectRatio = openrouter.ImageAspectRatio3x4
+		request.AspectRatio = openingrouter.ImageAspectRatio3x4
 	case "4:1":
-		request.AspectRatio = openrouter.ImageAspectRatio4x1
+		request.AspectRatio = openingrouter.ImageAspectRatio4x1
 	case "4:3":
-		request.AspectRatio = openrouter.ImageAspectRatio4x3
+		request.AspectRatio = openingrouter.ImageAspectRatio4x3
 	case "4:5":
-		request.AspectRatio = openrouter.ImageAspectRatio4x5
+		request.AspectRatio = openingrouter.ImageAspectRatio4x5
 	case "5:4":
-		request.AspectRatio = openrouter.ImageAspectRatio5x4
+		request.AspectRatio = openingrouter.ImageAspectRatio5x4
 	case "8:1":
-		request.AspectRatio = openrouter.ImageAspectRatio8x1
+		request.AspectRatio = openingrouter.ImageAspectRatio8x1
 	case "9:16":
-		request.AspectRatio = openrouter.ImageAspectRatio9x16
+		request.AspectRatio = openingrouter.ImageAspectRatio9x16
 	case "16:9":
-		request.AspectRatio = openrouter.ImageAspectRatio16x9
+		request.AspectRatio = openingrouter.ImageAspectRatio16x9
 	case "21:9":
-		request.AspectRatio = openrouter.ImageAspectRatio21x9
+		request.AspectRatio = openingrouter.ImageAspectRatio21x9
 	default:
 		// don't set aspect ratio
 	}
 
 	for _, img := range r.Images {
-		request.InputReferences = append(request.InputReferences, openrouter.ImageInputReference{
-			Type: openrouter.ImageInputReferenceTypeImageURL,
-			ImageURL: openrouter.ImageURLRef{
+		request.InputReferences = append(request.InputReferences, openingrouter.ContentPartImage{
+			Type: openingrouter.ContentPartTypeImageURL,
+			ImageURL: openingrouter.ContentPartImageURL{
 				URL: img,
 			},
 		})
@@ -125,7 +125,7 @@ func (r *ChatRequest) Parse() (*openrouter.ImageGenerationRequest, error) {
 	return &request, nil
 }
 
-func ParseChatRequest(r *http.Request) (*openrouter.ImageGenerationRequest, error) {
+func ParseChatRequest(r *http.Request) (*openingrouter.ImageGenerationRequest, error) {
 	var raw ChatRequest
 
 	err := json.NewDecoder(r.Body).Decode(&raw)
@@ -208,7 +208,7 @@ func HandleImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RunCompletion(ctx context.Context, response *Stream, request *openrouter.ImageGenerationRequest) error {
+func RunCompletion(ctx context.Context, response *Stream, request *openingrouter.ImageGenerationRequest) error {
 	stream, err := OpenRouterStartImageStream(ctx, *request)
 	if err != nil {
 		return fmt.Errorf("stream.start: %v", err)

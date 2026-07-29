@@ -196,12 +196,18 @@ body {
 	padding-left: 2px;
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: 4px;
 }
 
 .resolution-estimate span {
 	font-weight: 600;
 	color: var(--c-subtext1);
+}
+
+#resolution-estimate-cost {
+	color: var(--c-teal);
+	float: right;
 }
 
 label {

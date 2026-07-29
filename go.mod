@@ -1,13 +1,12 @@
 module paws
 
-go 1.26.4
+go 1.26.5
 
 require (
-	github.com/coalaura/openingrouter v0.2.0
+	github.com/coalaura/openingrouter v1.0.1
 	github.com/coalaura/plain v1.4.3
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/goccy/go-yaml v1.19.2
-	github.com/revrost/go-openrouter v1.6.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 	golang.org/x/crypto v0.53.0
 )
@@ -15,9 +14,8 @@ require (
 require (
 	github.com/coalaura/byteconv v0.1.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
+	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/term v0.44.0 // indirect
 )
-
-replace github.com/revrost/go-openrouter => github.com/coalaura/go-openrouter v0.2.9-0.20260726225120-2c9c28e3e3e1
