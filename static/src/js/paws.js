@@ -1584,6 +1584,11 @@ function setPageDragOver(active) {
 	$refImagesContainer.classList.toggle("drag-over", active);
 }
 
+function clearPageDragOver() {
+	pageDragDepth = 0;
+	setPageDragOver(false);
+}
+
 document.addEventListener("dragenter", event => {
 	if (!isImageDrop(event.dataTransfer)) {
 		return;
@@ -1608,6 +1613,12 @@ document.addEventListener("dragleave", event => {
 		return;
 	}
 
+	if (!event.relatedTarget) {
+		clearPageDragOver();
+
+		return;
+	}
+
 	pageDragDepth = Math.max(0, pageDragDepth - 1);
 
 	if (pageDragDepth === 0) {
@@ -1616,8 +1627,7 @@ document.addEventListener("dragleave", event => {
 });
 
 document.addEventListener("drop", async event => {
-	pageDragDepth = 0;
-	setPageDragOver(false);
+	clearPageDragOver();
 
 	if (isRefReorderDrag(event.dataTransfer)) {
 		return;
@@ -1651,6 +1661,10 @@ document.addEventListener("drop", async event => {
 
 	await handleFiles(files);
 });
+
+document.addEventListener("dragend", clearPageDragOver);
+
+window.addEventListener("blur", clearPageDragOver);
 
 document.addEventListener("paste", async event => {
 	const items = event.clipboardData?.items;
