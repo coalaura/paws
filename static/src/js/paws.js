@@ -64,6 +64,13 @@ const $loader = document.getElementById("global-loader"),
 	$imageModal = document.getElementById("image-modal"),
 	$fullImage = document.getElementById("full-image"),
 	$closeImageModal = document.getElementById("close-image-modal"),
+	$cropModal = document.getElementById("crop-modal"),
+	$cropStage = document.getElementById("crop-stage"),
+	$cropImage = document.getElementById("crop-image"),
+	$cropSelection = document.getElementById("crop-selection"),
+	$closeCropModal = document.getElementById("close-crop-modal"),
+	$resetCropBtn = document.getElementById("reset-crop-btn"),
+	$applyCropBtn = document.getElementById("apply-crop-btn"),
 	$comparisonModal = document.getElementById("comparison-modal"),
 	$comparisonBefore = document.getElementById("comparison-before"),
 	$comparisonAfter = document.getElementById("comparison-after"),
@@ -101,7 +108,10 @@ let rawRefs = load("referenceImages", []),
 	activeComposerPane = load("activeComposerPane", "prompt"),
 	activePresetName = "",
 	unsavedPreset = null,
-	pageDragDepth = 0;
+	pageDragDepth = 0,
+	cropItem = null,
+	crop = null,
+	cropDrag = null;
 
 $useDefaultSystem.checked = useDefaultSys;
 
@@ -182,6 +192,37 @@ function openImageModal(src) {
 	$imageModal.classList.add("open");
 }
 
+function clamp(value, min, max) {
+	return Math.min(Math.max(value, min), max);
+}
+
+function renderCropSelection() {
+	if (!crop) {
+		return;
+	}
+
+	$cropSelection.style.left = `${crop.x * 100}%`;
+	$cropSelection.style.top = `${crop.y * 100}%`;
+	$cropSelection.style.width = `${crop.width * 100}%`;
+	$cropSelection.style.height = `${crop.height * 100}%`;
+}
+
+function openCropModal(item) {
+	cropItem = item;
+	crop = item.crop ? { ...item.crop } : { x: 0, y: 0, width: 1, height: 1 };
+	$cropImage.src = item.original;
+	$cropModal.classList.add("open");
+
+	requestAnimationFrame(renderCropSelection);
+}
+
+function closeCropModal() {
+	$cropModal.classList.remove("open");
+	cropItem = null;
+	crop = null;
+	cropDrag = null;
+}
+
 function updateComparisonPosition() {
 	const position = $comparisonRange.value;
 
@@ -232,14 +273,18 @@ function readFileAsDataUrl(file) {
 	});
 }
 
-function processRefImage(dataUrl) {
+function processRefImage(dataUrl, cropRect) {
 	return new Promise(resolve => {
 		const maxRes = parseInt($maxRefResolution.value, 10) || 0,
 			img = new Image();
 
 		img.onload = () => {
-			let width = img.naturalWidth,
-				height = img.naturalHeight;
+			const sourceX = Math.round((cropRect?.x || 0) * img.naturalWidth),
+				sourceY = Math.round((cropRect?.y || 0) * img.naturalHeight),
+				sourceWidth = Math.max(1, Math.round((cropRect?.width || 1) * img.naturalWidth)),
+				sourceHeight = Math.max(1, Math.round((cropRect?.height || 1) * img.naturalHeight));
+			let width = sourceWidth,
+				height = sourceHeight;
 
 			if (maxRes > 0) {
 				const maxDim = Math.max(width, height);
@@ -259,7 +304,7 @@ function processRefImage(dataUrl) {
 
 			const ctx = canvas.getContext("2d");
 
-			ctx.drawImage(img, 0, 0, width, height);
+			ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
 
 			resolve(canvas.toDataURL("image/jpeg", 0.92));
 		};
@@ -446,6 +491,16 @@ function renderReferenceImages() {
 		img.src = item.processed || item.original;
 
 		wrapper.appendChild(img);
+
+		const editBtn = document.createElement("button");
+
+		editBtn.className = "edit-ref-btn";
+		editBtn.textContent = "Crop";
+		editBtn.title = "Crop image";
+		editBtn.addEventListener("pointerdown", event => event.stopPropagation());
+		editBtn.addEventListener("click", () => openCropModal(item));
+
+		wrapper.appendChild(editBtn);
 
 		const rmBtn = document.createElement("button");
 
@@ -1707,7 +1762,7 @@ $maxRefResolution.addEventListener("change", async () => {
 
 	if (referenceImages.length > 0) {
 		for (const referenceImage of referenceImages) {
-			referenceImage.processed = await processRefImage(referenceImage.original);
+			referenceImage.processed = await processRefImage(referenceImage.original, referenceImage.crop);
 		}
 
 		renderReferenceImages();
@@ -1722,6 +1777,120 @@ $imageModal.querySelector(".background").addEventListener("click", () => {
 
 $closeImageModal.addEventListener("click", () => {
 	$imageModal.classList.remove("open");
+});
+
+$cropModal.querySelector(".background").addEventListener("click", closeCropModal);
+
+$closeCropModal.addEventListener("click", closeCropModal);
+
+$resetCropBtn.addEventListener("click", () => {
+	if (!cropItem) {
+		return;
+	}
+
+	crop = { x: 0, y: 0, width: 1, height: 1 };
+
+	renderCropSelection();
+});
+
+$applyCropBtn.addEventListener("click", async () => {
+	if (!cropItem || !crop) {
+		return;
+	}
+
+	$cropModal.classList.add("loading");
+
+	cropItem.crop = crop.x === 0 && crop.y === 0 && crop.width === 1 && crop.height === 1 ? undefined : { ...crop };
+	cropItem.processed = await processRefImage(cropItem.original, cropItem.crop);
+
+	$cropModal.classList.remove("loading");
+
+	closeCropModal();
+	renderReferenceImages();
+});
+
+$cropStage.addEventListener("pointerdown", event => {
+	if (!crop || event.target.closest(".crop-selection")) {
+		return;
+	}
+
+	const bounds = $cropStage.getBoundingClientRect(),
+		startX = clamp((event.clientX - bounds.left) / bounds.width, 0, 1),
+		startY = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
+
+	crop = { x: startX, y: startY, width: 0, height: 0 };
+	cropDrag = { type: "create", startX, startY };
+
+	$cropStage.setPointerCapture(event.pointerId);
+
+	renderCropSelection();
+});
+
+$cropSelection.addEventListener("pointerdown", event => {
+	if (!crop) {
+		return;
+	}
+
+	const handle = event.target.dataset.handle;
+
+	cropDrag = {
+		type: handle ? "resize" : "move",
+		handle: handle,
+		startCrop: { ...crop },
+		startX: event.clientX,
+		startY: event.clientY
+	};
+
+	$cropStage.setPointerCapture(event.pointerId);
+
+	event.stopPropagation();
+});
+
+$cropStage.addEventListener("pointermove", event => {
+	if (!cropDrag || !crop) {
+		return;
+	}
+
+	const bounds = $cropStage.getBoundingClientRect(),
+		x = clamp((event.clientX - bounds.left) / bounds.width, 0, 1),
+		y = clamp((event.clientY - bounds.top) / bounds.height, 0, 1),
+		minSize = 0.04;
+
+	if (cropDrag.type === "create") {
+		const left = Math.min(cropDrag.startX, x),
+			top = Math.min(cropDrag.startY, y),
+			right = Math.max(cropDrag.startX, x),
+			bottom = Math.max(cropDrag.startY, y);
+
+		crop = {
+			x: left,
+			y: top,
+			width: Math.min(1 - left, Math.max(minSize, right - left)),
+			height: Math.min(1 - top, Math.max(minSize, bottom - top)),
+		};
+	} else if (cropDrag.type === "move") {
+		const start = cropDrag.startCrop,
+			dx = (event.clientX - cropDrag.startX) / bounds.width,
+			dy = (event.clientY - cropDrag.startY) / bounds.height;
+
+		crop.x = clamp(start.x + dx, 0, 1 - start.width);
+		crop.y = clamp(start.y + dy, 0, 1 - start.height);
+	} else {
+		const start = cropDrag.startCrop,
+			handle = cropDrag.handle,
+			left = handle.includes("w") ? Math.min(x, start.x + start.width - minSize) : start.x,
+			top = handle.includes("n") ? Math.min(y, start.y + start.height - minSize) : start.y,
+			right = handle.includes("e") ? Math.max(x, start.x + minSize) : start.x + start.width,
+			bottom = handle.includes("s") ? Math.max(y, start.y + minSize) : start.y + start.height;
+
+		crop = { x: left, y: top, width: right - left, height: bottom - top };
+	}
+
+	renderCropSelection();
+});
+
+$cropStage.addEventListener("pointerup", () => {
+	cropDrag = null;
 });
 
 $comparisonRange.addEventListener("input", updateComparisonPosition);
@@ -2067,6 +2236,10 @@ document.addEventListener("keydown", event => {
 
 		if ($comparisonModal?.classList.contains("open")) {
 			$comparisonModal.classList.remove("open");
+		}
+
+		if ($cropModal?.classList.contains("open")) {
+			closeCropModal();
 		}
 	}
 });

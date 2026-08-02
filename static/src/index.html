@@ -195,6 +195,32 @@
 			</div>
 		</div>
 
+		<div id="crop-modal" class="modal">
+			<div class="background"></div>
+
+			<div class="content crop-modal-content">
+				<div class="crop-toolbar">
+					<div class="crop-title">Crop Reference</div>
+					<button id="close-crop-modal" class="close-btn" title="Close crop editor">&times;</button>
+				</div>
+
+				<div id="crop-stage" class="crop-stage">
+					<img id="crop-image" alt="Reference image crop preview" />
+					<div id="crop-selection" class="crop-selection">
+						<span class="crop-handle crop-handle-nw" data-handle="nw"></span>
+						<span class="crop-handle crop-handle-ne" data-handle="ne"></span>
+						<span class="crop-handle crop-handle-se" data-handle="se"></span>
+						<span class="crop-handle crop-handle-sw" data-handle="sw"></span>
+					</div>
+				</div>
+
+				<div class="crop-actions">
+					<button id="reset-crop-btn" class="modal-btn secondary">Reset</button>
+					<button id="apply-crop-btn" class="modal-btn primary">Apply Crop</button>
+				</div>
+			</div>
+		</div>
+
 		<div id="save-preset-modal" class="modal">
 			<div class="background"></div>
 
