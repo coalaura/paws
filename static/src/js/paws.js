@@ -762,7 +762,7 @@ function loadSettings(job) {
 
 	renderReferenceImages();
 	updateResolutionEstimate();
-	syncPresetSelection();
+	syncPresetSelection(true);
 }
 
 function createJobDOM(job) {
@@ -2197,16 +2197,23 @@ function findMatchingPreset() {
 	);
 }
 
-function syncPresetSelection() {
+function syncPresetSelection(refresh = false) {
 	if (!$presetSelect) {
 		return;
 	}
 
-	const match = findMatchingPreset();
+	const match = findMatchingPreset(),
+		selectedName = match?.name || "";
+
+	activePresetName = selectedName;
+
+	if (refresh) {
+		renderPresets(selectedName);
+
+		return;
+	}
 
 	if (match) {
-		activePresetName = match.name;
-
 		$presetSelect.value = match.name;
 
 		if ($deletePresetBtn) {
@@ -2215,8 +2222,6 @@ function syncPresetSelection() {
 
 		return;
 	}
-
-	activePresetName = "";
 
 	$presetSelect.value = "";
 
