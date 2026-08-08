@@ -768,6 +768,12 @@ input:focus {
 	position: relative;
 }
 
+.action-btn.pin-btn.active {
+	background: var(--c-yellow);
+	border-color: var(--c-yellow);
+	color: var(--c-crust);
+}
+
 .job-menu {
 	position: absolute;
 	top: 100%;

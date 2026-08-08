@@ -9,6 +9,7 @@ import editSvg from "../css/icons/edit.svg?raw";
 import imageSvg from "../css/icons/image.svg?raw";
 import compareSvg from "../css/icons/compare.svg?raw";
 import moreSvg from "../css/icons/more.svg?raw";
+import pinSvg from "../css/icons/pin.svg?raw";
 import retrySvg from "../css/icons/retry.svg?raw";
 
 import { dropdown } from "./dropdown.js";
@@ -111,7 +112,10 @@ let rawRefs = load("referenceImages", []),
 	pageDragDepth = 0,
 	cropItem = null,
 	crop = null,
-	cropDrag = null;
+	cropDrag = null,
+	draggedImageSource = null;
+
+const jobImageUrls = new Map();
 
 $useDefaultSystem.checked = useDefaultSys;
 
@@ -183,7 +187,74 @@ function calculateAspectRatio(width, height) {
 }
 
 function saveJobs() {
+	document.title = jobs.some(job => job.status === "pending") ? `paws *` : "paws";
+
 	store("jobs", jobs);
+}
+
+function setJobImageSource(img, job) {
+	const result = job.result;
+
+	if (!result) {
+		return;
+	}
+
+	const existing = jobImageUrls.get(job.id);
+
+	if (existing?.source === result) {
+		img.src = existing.url;
+
+		return;
+	}
+
+	if (existing) {
+		URL.revokeObjectURL(existing.url);
+		jobImageUrls.delete(job.id);
+	}
+
+	fetch(result)
+		.then(response => response.blob())
+		.then(blob => {
+			if (job.result !== result) {
+				return;
+			}
+
+			const objectUrl = URL.createObjectURL(blob);
+
+			jobImageUrls.set(job.id, {
+				source: result,
+				url: objectUrl
+			});
+
+			img.src = objectUrl;
+		})
+		.catch(() => {
+			img.src = result;
+		});
+}
+
+function releaseJobImageUrl(job) {
+	const image = jobImageUrls.get(job.id);
+
+	if (image) {
+		URL.revokeObjectURL(image.url);
+		jobImageUrls.delete(job.id);
+	}
+}
+
+function addReferenceImage(source) {
+	if (!source || referenceImages.length >= MaxImages) {
+		return;
+	}
+
+	return processRefImage(source).then(processed => {
+		referenceImages.push({
+			original: source,
+			processed: processed
+		});
+
+		renderReferenceImages();
+	});
 }
 
 function openImageModal(src) {
@@ -520,7 +591,9 @@ function renderReferenceImages() {
 		wrapper.__refItem = item;
 
 		wrapper.addEventListener("dragstart", event => {
+			draggedImageSource = item.original;
 			event.dataTransfer.setData("application/paws-ref-sort", "true");
+			event.dataTransfer.setData("application/paws-reference-image", "reference");
 			event.dataTransfer.effectAllowed = "move";
 
 			setTimeout(() => wrapper.classList.add("dragging"), 0);
@@ -608,21 +681,13 @@ async function handleFiles(files) {
 }
 
 async function useAsReference(job) {
-	if (!job.result) {
-		return;
-	}
-
-	if (referenceImages.length >= MaxImages) {
+	if (!job.result || referenceImages.length >= MaxImages) {
 		console.warn("Maximum reference images reached");
 
 		return;
 	}
 
-	const processed = await processRefImage(job.result);
-
-	referenceImages.push({ original: job.result, processed: processed });
-
-	renderReferenceImages();
+	await addReferenceImage(job.result);
 }
 
 function loadSettings(job) {
@@ -721,7 +786,7 @@ function createJobDOM(job) {
 	if (job.status !== "done" && !job.result) {
 		img.classList.add("blurred", "hidden");
 	} else if (job.result) {
-		img.src = job.result;
+		setJobImageSource(img, job);
 
 		if (job.status === "done") {
 			img.draggable = true;
@@ -747,6 +812,14 @@ function createJobDOM(job) {
 	closeBtn.className = "action-btn close-btn";
 	closeBtn.innerHTML = deleteSvg;
 	closeBtn.title = "Cancel / Remove";
+
+	const pinBtn = document.createElement("button");
+
+	pinBtn.className = "action-btn pin-btn";
+	pinBtn.innerHTML = pinSvg;
+	pinBtn.title = job.pinned ? "Unpin generation" : "Pin generation";
+	pinBtn.classList.toggle("active", Boolean(job.pinned));
+	pinBtn.setAttribute("aria-pressed", String(Boolean(job.pinned)));
 
 	const dlBtn = document.createElement("button");
 
@@ -812,6 +885,7 @@ function createJobDOM(job) {
 	menu.appendChild(loadSettingsItem);
 
 	actions.appendChild(closeBtn);
+	actions.appendChild(pinBtn);
 	actions.appendChild(moreBtn);
 	actions.appendChild(retryBtn);
 	actions.appendChild(dlBtn);
@@ -865,6 +939,13 @@ function createJobDOM(job) {
 			const refImg = document.createElement("img");
 
 			refImg.src = src;
+			refImg.draggable = true;
+
+			refImg.addEventListener("dragstart", event => {
+				draggedImageSource = src;
+				event.dataTransfer.setData("application/paws-reference-image", "reference");
+				event.dataTransfer.effectAllowed = "copy";
+			});
 
 			refImg.addEventListener("click", event => {
 				event.stopPropagation();
@@ -963,6 +1044,7 @@ function createJobDOM(job) {
 	return {
 		card: card,
 		closeBtn: closeBtn,
+		pinBtn: pinBtn,
 		dlBtn: dlBtn,
 		retryBtn: retryBtn,
 		moreBtn: moreBtn,
@@ -989,6 +1071,10 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 	};
 
 	ui.closeBtn.addEventListener("click", () => {
+		if (job.pinned && !confirm("Remove this pinned generation?")) {
+			return;
+		}
+
 		if (clearTimer) {
 			clearTimer();
 		}
@@ -998,6 +1084,7 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 		}
 
 		ui.card.remove();
+		releaseJobImageUrl(job);
 
 		jobs = jobs.filter(jb => jb.id !== job.id);
 
@@ -1005,6 +1092,10 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 	});
 
 	ui.retryBtn.addEventListener("click", () => {
+		if (job.pinned && !confirm("Retry this pinned generation?")) {
+			return;
+		}
+
 		if (clearTimer) {
 			clearTimer();
 		}
@@ -1016,6 +1107,16 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 		startGenerationJob(job, ui.card);
 	});
 
+	ui.pinBtn.addEventListener("click", () => {
+		job.pinned = !job.pinned;
+
+		ui.pinBtn.classList.toggle("active", job.pinned);
+		ui.pinBtn.title = job.pinned ? "Unpin generation" : "Pin generation";
+		ui.pinBtn.setAttribute("aria-pressed", String(job.pinned));
+
+		saveJobs();
+	});
+
 	ui.dlBtn.addEventListener("click", () => {
 		if (!ui.$img.src) {
 			return;
@@ -1023,8 +1124,8 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 
 		const a = document.createElement("a");
 
-		a.href = ui.$img.src;
-		a.download = `p${Date.now().toString(16)}.png`;
+		a.href = job.result;
+		a.download = `p${(job.finishedAt || job.startedAt).toString(16)}.png`;
 
 		a.click();
 	});
@@ -1078,8 +1179,9 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 			return;
 		}
 
-		event.dataTransfer.setData("application/paws-result-image", "true");
-		event.dataTransfer.setData("text/plain", job.result);
+		draggedImageSource = job.result;
+
+		event.dataTransfer.setData("application/paws-result-image", job.id);
 		event.dataTransfer.effectAllowed = "copy";
 	});
 
@@ -1178,6 +1280,8 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 	let job;
 
 	if (retryJob) {
+		releaseJobImageUrl(retryJob);
+
 		job = retryJob;
 
 		job.status = "pending";
@@ -1186,6 +1290,7 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 		job.cost = null;
 		job.startedAt = Date.now();
 		job.duration = null;
+		job.finishedAt = null;
 	} else {
 		const payload = {
 			model: $model.value,
@@ -1265,6 +1370,7 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 					ui.dlBtn.classList.remove("hidden");
 
 					job.status = "done";
+					job.finishedAt ||= Date.now();
 
 					saveJobs();
 
@@ -1286,10 +1392,11 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 
 			switch (chunk.type) {
 				case "image":
-					ui.$img.src = chunk.data;
-					ui.$img.classList.remove("hidden");
-
 					job.result = chunk.data;
+
+					setJobImageSource(ui.$img, job);
+
+					ui.$img.classList.remove("hidden");
 
 					if (ui.useRefItem) {
 						ui.useRefItem.style.opacity = "1";
@@ -1319,6 +1426,7 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 					ui.dlBtn.classList.remove("hidden");
 
 					job.status = "done";
+					job.finishedAt ||= Date.now();
 
 					saveJobs();
 
@@ -1568,14 +1676,18 @@ function isRefReorderDrag(dataTransfer) {
 	return Array.from(dataTransfer?.types || []).includes("application/paws-ref-sort");
 }
 
+function isOverReferenceImages(target) {
+	return target instanceof Element && Boolean(target.closest("#reference-images"));
+}
+
 function isImageDrop(dataTransfer) {
-	if (!dataTransfer || isRefReorderDrag(dataTransfer)) {
+	if (!dataTransfer) {
 		return false;
 	}
 
 	const types = Array.from(dataTransfer.types);
 
-	return types.includes("Files") || types.includes("application/paws-result-image");
+	return types.includes("Files") || types.includes("application/paws-result-image") || types.includes("application/paws-reference-image");
 }
 
 function setPageDragOver(active) {
@@ -1590,6 +1702,10 @@ function clearPageDragOver() {
 }
 
 document.addEventListener("dragenter", event => {
+	if (isRefReorderDrag(event.dataTransfer) && isOverReferenceImages(event.target)) {
+		return;
+	}
+
 	if (!isImageDrop(event.dataTransfer)) {
 		return;
 	}
@@ -1600,6 +1716,10 @@ document.addEventListener("dragenter", event => {
 });
 
 document.addEventListener("dragover", event => {
+	if (isRefReorderDrag(event.dataTransfer) && isOverReferenceImages(event.target)) {
+		return;
+	}
+
 	if (!isImageDrop(event.dataTransfer)) {
 		return;
 	}
@@ -1629,32 +1749,23 @@ document.addEventListener("dragleave", event => {
 document.addEventListener("drop", async event => {
 	clearPageDragOver();
 
-	if (isRefReorderDrag(event.dataTransfer)) {
+	if (isRefReorderDrag(event.dataTransfer) && isOverReferenceImages(event.target)) {
 		return;
 	}
 
-	const data = event.dataTransfer?.getData("text/plain");
-	const files = event.dataTransfer?.files;
-	const hasImageFiles = files && [...files].some(file => file.type.startsWith("image/"));
-	const hasDataImage = data?.startsWith("data:image");
+	const data = event.dataTransfer?.getData("text/plain"),
+		files = event.dataTransfer?.files,
+		hasImageFiles = files && [...files].some(file => file.type.startsWith("image/")),
+		source = draggedImageSource || (data?.startsWith("data:image") ? data : null);
 
-	if (!hasImageFiles && !hasDataImage) {
+	if (!hasImageFiles && !source) {
 		return;
 	}
 
 	event.preventDefault();
 
-	if (hasDataImage) {
-		if (referenceImages.length < MaxImages) {
-			const processed = await processRefImage(data);
-
-			referenceImages.push({
-				original: data,
-				processed: processed,
-			});
-
-			renderReferenceImages();
-		}
+	if (source) {
+		await addReferenceImage(source);
 
 		return;
 	}
@@ -1662,9 +1773,22 @@ document.addEventListener("drop", async event => {
 	await handleFiles(files);
 });
 
-document.addEventListener("dragend", clearPageDragOver);
+document.addEventListener("dragend", () => {
+	draggedImageSource = null;
+
+	clearPageDragOver();
+});
 
 window.addEventListener("blur", clearPageDragOver);
+
+window.addEventListener("beforeunload", event => {
+	if (!jobs.some(job => job.status === "pending")) {
+		return;
+	}
+
+	event.preventDefault();
+	event.returnValue = "";
+});
 
 document.addEventListener("paste", async event => {
 	const items = event.clipboardData?.items;
@@ -1946,6 +2070,8 @@ for (let i = jobs.length - 1; i >= 0; i--) {
 
 	setupJobUI(ui, job);
 }
+
+saveJobs();
 
 function normalizePresetOrder() {
 	const names = presets.map(preset => preset.name);
