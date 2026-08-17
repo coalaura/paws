@@ -46,6 +46,21 @@ var ReferenceImageNoStreamingModels = [...]string{
 
 // Since there is no reliable image output pricing data :(
 var ImageModelPricing = map[string]*ImagePricing{
+	// https://openrouter.ai/bytedance-seed/seedream-5-0-lite
+	"bytedance-seed/seedream-5-0-lite": NewImagePricing(0.035), // No 2K or 4K
+
+	// https://openrouter.ai/bytedance-seed/seedream-5-0-pro
+	"bytedance-seed/seedream-5-0-pro": NewImagePricing(0.09), // No 2K or 4K
+
+	// https://openrouter.ai/x-ai/grok-imagine-image-2.0
+	"x-ai/grok-imagine-image-2.0": NewImagePricing(0.06, 0.08), // No 4K
+
+	// https://openrouter.ai/qwen/qwen-image-3-pro
+	"qwen/qwen-image-3-pro": NewImagePricing(0.04, 0.075), // No 4K
+
+	// https://openrouter.ai/qwen/qwen-image-3
+	"qwen/qwen-image-3": NewImagePricing(0.03, 0.03), // No 4K
+
 	// No reliable pricing, only by million tokens, determined by testing
 	"microsoft/mai-image-2.5-pro": NewImagePricing(0.111), // No 2K or 4K
 
