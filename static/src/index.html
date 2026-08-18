@@ -93,12 +93,23 @@
 								<option value="9:20">9:20</option>
 								<option value="20:9">20:9</option>
 								<option value="9:21">9:21</option>
-								<option value="21:9">21:9</option>
-							</select>
-						</div>
+							<option value="21:9">21:9</option>
+						</select>
 					</div>
 
-					<div class="resolution-estimate" id="resolution-estimate">
+					<div class="form-group">
+						<label for="quality">Quality</label>
+
+						<select id="quality">
+							<option value="auto" selected>auto</option>
+							<option value="low">low</option>
+							<option value="medium">medium</option>
+							<option value="high">high</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="resolution-estimate" id="resolution-estimate">
 						<div>
 							Estimated Target: <span id="resolution-estimate-val">2048 x 2048 px</span>
 						</div>

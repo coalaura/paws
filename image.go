@@ -19,6 +19,7 @@ import (
 type ImageConfig struct {
 	Resolution string `json:"resolution"`
 	Aspect     string `json:"aspect"`
+	Quality    string `json:"quality"`
 }
 
 type ChatRequest struct {
@@ -101,6 +102,19 @@ func (r *ChatRequest) Parse() (*openingrouter.ImageGenerationRequest, error) {
 		request.AspectRatio = openingrouter.ImageAspectRatio21x9
 	default:
 		// don't set aspect ratio
+	}
+
+	switch r.Image.Quality {
+	case "low":
+		request.Quality = openingrouter.ImageQualityLow
+	case "medium":
+		request.Quality = openingrouter.ImageQualityMedium
+	case "high":
+		request.Quality = openingrouter.ImageQualityHigh
+	case "auto":
+		request.Quality = openingrouter.ImageQualityAuto
+	default:
+		// don't set quality
 	}
 
 	for _, img := range r.Images {

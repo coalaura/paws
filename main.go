@@ -64,6 +64,8 @@ func main() {
 
 		gr.Post("/-/image", HandleImage)
 		gr.Post("/-/dump", HandleDump)
+
+		gr.Post("/-/cost", HandleImageEstimate)
 	})
 
 	addr := env.Addr()

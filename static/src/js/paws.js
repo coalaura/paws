@@ -57,6 +57,7 @@ const $loader = document.getElementById("global-loader"),
 	$model = document.getElementById("model"),
 	$resolution = document.getElementById("resolution"),
 	$aspectRatio = document.getElementById("aspect-ratio"),
+	$quality = document.getElementById("quality"),
 	$authentication = document.getElementById("authentication"),
 	$authError = document.getElementById("auth-error"),
 	$username = document.getElementById("username"),
@@ -117,6 +118,8 @@ let rawRefs = load("referenceImages", []),
 
 const jobImageUrls = new Map();
 
+let costEstimateSeq = 0;
+
 $useDefaultSystem.checked = useDefaultSys;
 
 if (useDefaultSys) {
@@ -131,6 +134,7 @@ if (useDefaultSys) {
 $prompt.value = load("prompt", "");
 $resolution.value = load("resolution", "2K");
 $aspectRatio.value = load("aspect", "");
+$quality.value = load("quality", "auto");
 $maxRefResolution.value = load("maxRefResolution", "0");
 
 updateResolutionEstimate();
@@ -497,30 +501,108 @@ function updateResolutionEstimate() {
 		return;
 	}
 
-	const selectedModel = modelsData.find(mdl => mdl.id === $model.value);
+	fetchCostEstimate($costSpan);
+}
 
-	let price = null;
+async function fetchCostEstimate($costSpan) {
+	const model = $model.value;
 
-	if (selectedModel?.pricing) {
-		if (res === "4K") {
-			price = selectedModel.pricing.k_4;
-		} else if (res === "2K") {
-			price = selectedModel.pricing.k_2;
-		} else {
-			price = selectedModel.pricing.k_1;
-		}
-	}
-
-	if (price == null) {
-		$costSpan.hidden = true;
-		$costSpan.textContent = "";
+	if (!model) {
+		hideCostEstimate($costSpan);
 
 		return;
 	}
 
-	$costSpan.textContent = `~${formatMoney(price)}`;
-	$costSpan.hidden = false;
-	$sep.hidden = false;
+	const seq = ++costEstimateSeq;
+
+	const references = [];
+
+	for (const item of referenceImages) {
+		const size = await imageSize(item.processed || item.original);
+
+		if (seq !== costEstimateSeq) {
+			return;
+		}
+
+		if (size.width > 0 && size.height > 0) {
+			references.push(size);
+		}
+	}
+
+	let response;
+
+	try {
+		response = await fetch("/-/cost", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				model: model,
+				quality: $quality.value,
+				aspect: $aspectRatio.value,
+				resolution: $resolution.value,
+				references: references,
+			}),
+		});
+	} catch (err) {
+		console.error("Failed to fetch cost estimate", err);
+
+		if (seq === costEstimateSeq) {
+			hideCostEstimate($costSpan);
+		}
+
+		return;
+	}
+
+	if (seq !== costEstimateSeq) {
+		return;
+	}
+
+	if (!response.ok) {
+		hideCostEstimate($costSpan);
+
+		return;
+	}
+
+	const data = await response.json().catch(() => null);
+
+	if (seq !== costEstimateSeq) {
+		return;
+	}
+
+	if (data?.estimate != null && data.estimate > 0) {
+		$costSpan.textContent = `~${formatMoney(data.estimate)}`;
+
+		$costSpan.hidden = false;
+
+		return;
+	}
+
+	hideCostEstimate($costSpan);
+}
+
+function hideCostEstimate($costSpan) {
+	$costSpan.hidden = true;
+
+	$costSpan.textContent = "";
+}
+
+function imageSize(src) {
+	return new Promise(resolve => {
+		if (!src) {
+			resolve({ width: 0, height: 0 });
+
+			return;
+		}
+
+		const img = new Image();
+
+		img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+		img.onerror = () => resolve({ width: 0, height: 0 });
+
+		img.src = src;
+	});
 }
 
 function setComposerPane(pane, persist = true) {
@@ -659,6 +741,8 @@ function renderReferenceImages() {
 	$refImagesContainer.setAttribute("data-total", totalElements);
 
 	store("referenceImages", referenceImages);
+
+	updateResolutionEstimate();
 }
 
 async function handleFiles(files) {
@@ -715,6 +799,12 @@ function loadSettings(job) {
 		store("aspect", payload.image.aspect);
 	}
 
+	if (payload.image?.quality) {
+		$quality.value = payload.image.quality;
+
+		store("quality", payload.image.quality);
+	}
+
 	if (payload.system !== undefined) {
 		if (payload.system === SystemPrompt) {
 			$useDefaultSystem.checked = true;
@@ -761,7 +851,6 @@ function loadSettings(job) {
 	}
 
 	renderReferenceImages();
-	updateResolutionEstimate();
 	syncPresetSelection(true);
 }
 
@@ -1300,6 +1389,7 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 			image: {
 				resolution: $resolution.value,
 				aspect: $aspectRatio.value,
+				quality: $quality.value,
 			},
 		};
 
@@ -1895,6 +1985,12 @@ $aspectRatio.addEventListener("change", () => {
 	updateResolutionEstimate();
 });
 
+$quality.addEventListener("change", () => {
+	store("quality", $quality.value);
+
+	updateResolutionEstimate();
+});
+
 $maxRefResolution.addEventListener("change", async () => {
 	store("maxRefResolution", $maxRefResolution.value);
 
@@ -2048,6 +2144,7 @@ $closeComparisonModal.addEventListener("click", () => {
 resDropdown = dropdown($resolution);
 
 dropdown($aspectRatio);
+dropdown($quality);
 dropdown($maxRefResolution);
 
 if (referenceImages.length > 0) {
