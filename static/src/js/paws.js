@@ -437,65 +437,7 @@ function updateAvailableResolutions() {
 }
 
 function updateResolutionEstimate() {
-	const res = $resolution.value,
-		aspect = $aspectRatio.value;
-
-	const $valSpan = document.getElementById("resolution-estimate-val"),
-		$costSpan = document.getElementById("resolution-estimate-cost");
-
-	if (!$valSpan) {
-		return;
-	}
-
-	let targetArea = 2048 * 2048; // default 2K
-
-	if (res === "512") {
-		targetArea = 512 * 512;
-	} else if (res === "1K") {
-		targetArea = 1024 * 1024;
-	} else if (res === "2K") {
-		targetArea = 2048 * 2048;
-	} else if (res === "4K") {
-		targetArea = 4096 * 4096;
-	}
-
-	let w, h;
-
-	if (aspect) {
-		const parts = aspect.split(":");
-
-		if (parts.length === 2) {
-			const wRatio = parseFloat(parts[0]),
-				hRatio = parseFloat(parts[1]);
-
-			if (!isNaN(wRatio) && !isNaN(hRatio) && wRatio > 0 && hRatio > 0) {
-				h = Math.sqrt(targetArea * (hRatio / wRatio));
-				w = h * (wRatio / hRatio);
-			} else {
-				w = Math.sqrt(targetArea);
-				h = w;
-			}
-		} else {
-			w = Math.sqrt(targetArea);
-			h = w;
-		}
-	} else {
-		w = Math.sqrt(targetArea);
-		h = w;
-	}
-
-	let w64 = Math.round(w / 64) * 64,
-		h64 = Math.round(h / 64) * 64;
-
-	if (w64 < 64) {
-		w64 = 64;
-	}
-
-	if (h64 < 64) {
-		h64 = 64;
-	}
-
-	$valSpan.textContent = `${w64} × ${h64} px`;
+	const $costSpan = document.getElementById("resolution-estimate-cost");
 
 	if (!$costSpan) {
 		return;
@@ -574,7 +516,11 @@ async function fetchCostEstimate($costSpan) {
 	if (data?.estimate != null && data.estimate > 0) {
 		$costSpan.textContent = `~${formatMoney(data.estimate)}`;
 
-		$costSpan.hidden = false;
+		const $container = document.getElementById("resolution-estimate");
+
+		if ($container) {
+			$container.classList.remove("hidden");
+		}
 
 		return;
 	}
@@ -583,7 +529,11 @@ async function fetchCostEstimate($costSpan) {
 }
 
 function hideCostEstimate($costSpan) {
-	$costSpan.hidden = true;
+	const $container = document.getElementById("resolution-estimate");
+
+	if ($container) {
+		$container.classList.add("hidden");
+	}
 
 	$costSpan.textContent = "";
 }
@@ -1004,6 +954,17 @@ function createJobDOM(job) {
 	aspectBadge.className = "spec-badge hidden";
 
 	specs.appendChild(aspectBadge);
+
+	const quality = job.payload.image?.quality;
+
+	if (quality) {
+		const qualityBadge = document.createElement("span");
+
+		qualityBadge.className = "spec-badge";
+		qualityBadge.textContent = quality;
+
+		specs.appendChild(qualityBadge);
+	}
 
 	img.addEventListener("load", () => {
 		if (img.naturalWidth && img.naturalHeight) {
