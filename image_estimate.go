@@ -10,6 +10,18 @@ import (
 	"github.com/coalaura/openingrouter"
 )
 
+const (
+	gptImage2_step        = 16
+	gptImage2_minPixels   = 655_360
+	gptImage2_maxPixels   = 8_294_400
+	gptImage2_maxEdge     = 3_840
+	gptImage2_patchSize   = 32
+	gptImage2_patchBudget = 1536
+	gptImage2_upscaleTo   = 1024.0
+	gptImage2_maxUpscale  = 2.0
+	gptImage2_maxAspect   = 3
+)
+
 type EstimateRequest struct {
 	Model      string          `json:"model"`
 	Quality    string          `json:"quality"`
@@ -255,7 +267,9 @@ func resolveGPTImage1Size(req EstimateRequest) string {
 	if !explicit {
 		w, h, ok := aspectFromReferences(req.References)
 		if ok {
-			rw, rh, explicit = w, h, true
+			rw = w
+			rh = h
+			explicit = true
 		}
 	}
 
@@ -318,56 +332,48 @@ func sizeFromLongEdge(longEdge, ratioW, ratioH int) (int, int) {
 }
 
 func normalizeGPTImage2Size(width, height int) (int, int) {
-	const (
-		step         = 16
-		minPixels    = 655_360
-		maxPixels    = 8_294_400
-		maxEdge      = 3_840
-		maxAspectNum = 3
-	)
+	width = max(gptImage2_step, width/gptImage2_step*gptImage2_step)
+	height = max(gptImage2_step, height/gptImage2_step*gptImage2_step)
 
-	width = max(step, width/step*step)
-	height = max(step, height/step*step)
-
-	if width > maxEdge {
-		width = maxEdge
+	if width > gptImage2_maxEdge {
+		width = gptImage2_maxEdge
 	}
 
-	if height > maxEdge {
-		height = maxEdge
+	if height > gptImage2_maxEdge {
+		height = gptImage2_maxEdge
 	}
 
-	if width > maxAspectNum*height {
-		width = maxAspectNum * height
-		width = width / step * step
+	if width > gptImage2_maxAspect*height {
+		width = gptImage2_maxAspect * height
+		width = width / gptImage2_step * gptImage2_step
 	}
 
-	if height > maxAspectNum*width {
-		height = maxAspectNum * width
-		height = height / step * step
+	if height > gptImage2_maxAspect*width {
+		height = gptImage2_maxAspect * width
+		height = height / gptImage2_step * gptImage2_step
 	}
 
 	pixels := width * height
 
 	switch {
-	case pixels < minPixels:
-		scale := math.Sqrt(float64(minPixels) / float64(pixels))
+	case pixels < gptImage2_minPixels:
+		scale := math.Sqrt(float64(gptImage2_minPixels) / float64(pixels))
 
-		width = snapUp(int(math.Ceil(float64(width)*scale)), step)
-		height = snapUp(int(math.Ceil(float64(height)*scale)), step)
-	case pixels > maxPixels:
-		scale := math.Sqrt(float64(maxPixels) / float64(pixels))
+		width = snapUp(int(math.Ceil(float64(width)*scale)), gptImage2_step)
+		height = snapUp(int(math.Ceil(float64(height)*scale)), gptImage2_step)
+	case pixels > gptImage2_maxPixels:
+		scale := math.Sqrt(float64(gptImage2_maxPixels) / float64(pixels))
 
-		width = max(step, int(float64(width)*scale)/step*step)
-		height = max(step, int(float64(height)*scale)/step*step)
+		width = max(gptImage2_step, int(float64(width)*scale)/gptImage2_step*gptImage2_step)
+		height = max(gptImage2_step, int(float64(height)*scale)/gptImage2_step*gptImage2_step)
 	}
 
-	if width > maxEdge {
-		width = maxEdge
+	if width > gptImage2_maxEdge {
+		width = gptImage2_maxEdge
 	}
 
-	if height > maxEdge {
-		height = maxEdge
+	if height > gptImage2_maxEdge {
+		height = gptImage2_maxEdge
 	}
 
 	return width, height
@@ -395,60 +401,52 @@ func gptImage2OutputTokens(width, height int, quality string) int {
 }
 
 func gptImage2ReferenceTokens(width, height int) int {
-	const (
-		patchSize   = 32
-		patchBudget = 1536
-		upscaleTo   = 1024.0
-		maxUpscale  = 2.0
-		maxAspect   = 3
-	)
-
 	if width <= 0 || height <= 0 {
 		return 0
 	}
 
 	longEdge := max(width, height)
 
-	scale := math.Min(maxUpscale, math.Max(1, upscaleTo/float64(longEdge)))
+	scale := math.Min(gptImage2_maxUpscale, math.Max(1, gptImage2_upscaleTo/float64(longEdge)))
 
 	effW := max(1, int(math.Floor(float64(width)*scale)))
 	effH := max(1, int(math.Floor(float64(height)*scale)))
 
-	patchW := ceilDiv(effW, patchSize)
-	patchH := ceilDiv(effH, patchSize)
+	patchW := ceilDiv(effW, gptImage2_patchSize)
+	patchH := ceilDiv(effH, gptImage2_patchSize)
 
 	canvasW := effW
 	canvasH := effH
 
-	if patchW > maxAspect*patchH {
-		patchH = ceilDiv(patchW, maxAspect)
+	if patchW > gptImage2_maxAspect*patchH {
+		patchH = ceilDiv(patchW, gptImage2_maxAspect)
 
-		canvasW = patchW * patchSize
-		canvasH = patchH * patchSize
-	} else if patchH > maxAspect*patchW {
-		patchW = ceilDiv(patchH, maxAspect)
+		canvasW = patchW * gptImage2_patchSize
+		canvasH = patchH * gptImage2_patchSize
+	} else if patchH > gptImage2_maxAspect*patchW {
+		patchW = ceilDiv(patchH, gptImage2_maxAspect)
 
-		canvasW = patchW * patchSize
-		canvasH = patchH * patchSize
+		canvasW = patchW * gptImage2_patchSize
+		canvasH = patchH * gptImage2_patchSize
 	}
 
-	if patchW*patchH <= patchBudget {
+	if patchW*patchH <= gptImage2_patchBudget {
 		return patchW * patchH
 	}
 
-	scale = math.Sqrt(float64(patchSize*patchSize*patchBudget) / float64(canvasW*canvasH))
+	scale = math.Sqrt(float64(gptImage2_patchSize*gptImage2_patchSize*gptImage2_patchBudget) / float64(canvasW*canvasH))
 
-	x := float64(canvasW) * scale / patchSize
-	y := float64(canvasH) * scale / patchSize
+	x := float64(canvasW) * scale / gptImage2_patchSize
+	y := float64(canvasH) * scale / gptImage2_patchSize
 
 	newW := ceilUnit(x)
 	newH := ceilUnit(y)
 
-	if newW*newH > patchBudget {
+	if newW*newH > gptImage2_patchBudget {
 		scale *= math.Min(math.Floor(x)/x, math.Floor(y)/y)
 
-		newW = ceilUnit(float64(canvasW) * scale / patchSize)
-		newH = ceilUnit(float64(canvasH) * scale / patchSize)
+		newW = ceilUnit(float64(canvasW) * scale / gptImage2_patchSize)
+		newH = ceilUnit(float64(canvasH) * scale / gptImage2_patchSize)
 	}
 
 	return newW * newH

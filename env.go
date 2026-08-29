@@ -156,7 +156,8 @@ func (e *Environment) Init() error {
 	}
 
 	if store {
-		if err := e.Store(); err != nil {
+		err := e.Store()
+		if err != nil {
 			return err
 		}
 

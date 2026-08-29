@@ -34,7 +34,8 @@ func GetModel(name string) *Model {
 }
 
 func StartModelUpdateLoop() error {
-	if err := LoadModels(); err != nil {
+	err := LoadModels()
+	if err != nil {
 		return err
 	}
 
@@ -42,7 +43,8 @@ func StartModelUpdateLoop() error {
 		ticker := time.NewTicker(time.Duration(env.Settings.RefreshInterval) * time.Minute)
 
 		for range ticker.C {
-			if err := LoadModels(); err != nil {
+			err := LoadModels()
+			if err != nil {
 				log.Warnln(err)
 			}
 		}
