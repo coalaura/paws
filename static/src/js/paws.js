@@ -135,7 +135,7 @@ if (useDefaultSys) {
 
 $prompt.value = load("prompt", "");
 $resolution.value = load("resolution", "2K");
-$aspectRatio.value = load("aspect", "");
+$aspectRatio.value = load("aspect", "auto") || "auto";
 $quality.value = load("quality", "auto");
 $maxRefResolution.value = load("maxRefResolution", "0");
 
@@ -415,7 +415,7 @@ function updateAvailableOptions() {
 
 	const options = selectedModel.options || {},
 		resolutions = options.resolutions?.length ? options.resolutions : ["1K"],
-		aspectRatios = options.aspect_ratios?.length ? options.aspect_ratios : [""],
+		aspectRatios = options.aspect_ratios?.length ? options.aspect_ratios : ["auto"],
 		qualities = options.qualities?.length ? options.qualities : ["auto"];
 
 	resDropdown.setAvailable(resolutions);

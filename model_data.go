@@ -32,20 +32,29 @@ func NewImagePricing(k ...float64) *ImagePricing {
 	}
 }
 
-// Some models (primarily openai) will error if providing reference images and
-// setting stream=true, while documenting supports_streaming=true, so we need this
-// manual list, annoyingly.
-var ReferenceImageNoStreamingModels = [...]string{
-	"openai/gpt-image-2",
-	"openai/gpt-image-1-mini",
-	"openai/gpt-image-1",
-	"openai/gpt-5.4-image-2",
-	"openai/gpt-5-image-mini",
-	"openai/gpt-5-image",
-}
-
 // Since there is no reliable image output pricing data :(
 var ImageModelPricing = map[string]*ImagePricing{
+	// https://artificialanalysis.ai/image/leaderboard/text-to-image
+	"microsoft/mai-image-2.6": NewImagePricing(0.0389), // No 2K or 4K
+
+	// https://artificialanalysis.ai/image/leaderboard/text-to-image
+	"microsoft/mai-image-2.6-flash": NewImagePricing(0.0195), // No 2K or 4K
+
+	// https://artificialanalysis.ai/image/leaderboard/text-to-image
+	"meta/muse-image": NewImagePricing(0.01), // No 2K or 4K
+
+	// https://openrouter.ai/recraft/recraft-v4-styles-pro
+	"recraft/recraft-v4-styles-pro": NewImagePricing(0.1), // No 2K or 4K
+
+	// https://openrouter.ai/recraft/recraft-v4-styles-vector
+	"recraft/recraft-v4-styles-vector": NewImagePricing(0.05), // No 2K or 4K
+
+	// https://openrouter.ai/recraft/recraft-v4-styles-pro-vector
+	"recraft/recraft-v4-styles-pro-vector": NewImagePricing(0.12), // No 2K or 4K
+
+	// https://openrouter.ai/recraft/recraft-v4-styles
+	"recraft/recraft-v4-styles": NewImagePricing(0.035), // No 2K or 4K
+
 	// https://openrouter.ai/bytedance-seed/seedream-5-0-lite
 	"bytedance-seed/seedream-5-0-lite": NewImagePricing(0.035), // No 2K or 4K
 

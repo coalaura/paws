@@ -110,7 +110,8 @@ func (r *ChatRequest) Parse() (*openingrouter.ImageGenerationRequest, error) {
 
 	stream := model.Options.CanStream
 
-	if len(r.Images) > 0 && slices.Contains(ReferenceImageNoStreamingModels[:], request.Model) {
+	// openai models break when using reference images + streaming
+	if len(r.Images) > 0 && strings.HasPrefix(request.Model, "openai/") {
 		stream = false
 	}
 
