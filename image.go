@@ -77,7 +77,7 @@ func (r *ChatRequest) Parse() (*openingrouter.ImageGenerationRequest, error) {
 	if len(model.Options.AspectRatios) > 0 {
 		request.AspectRatio = aspect
 
-		if !slices.Contains(model.Options.AspectRatios, string(request.AspectRatio)) {
+		if aspect != openingrouter.ImageAspectRatioAuto && !slices.Contains(model.Options.AspectRatios, string(request.AspectRatio)) {
 			return nil, fmt.Errorf("model does not support aspect ratio %q", request.AspectRatio)
 		}
 	}

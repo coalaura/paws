@@ -415,8 +415,12 @@ function updateAvailableOptions() {
 
 	const options = selectedModel.options || {},
 		resolutions = options.resolutions?.length ? options.resolutions : ["1K"],
-		aspectRatios = options.aspect_ratios?.length ? options.aspect_ratios : ["auto"],
 		qualities = options.qualities?.length ? options.qualities : ["auto"];
+
+	const aspectRatios = [
+		"auto",
+		...(Array.isArray(options.aspect_ratios) ? options.aspect_ratios.filter((ratio) => ratio !== "auto") : []),
+	];
 
 	resDropdown.setAvailable(resolutions);
 	aspectDropdown.setAvailable(aspectRatios);
