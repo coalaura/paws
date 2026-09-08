@@ -105,6 +105,8 @@ let rawRefs = load("referenceImages", []),
 	currentUsageData = null,
 	useDefaultSys = load("useDefaultSystem", false),
 	resDropdown = null,
+	aspectDropdown = null,
+	qualityDropdown = null,
 	presets = load("presets", load("settingsPresets", [])),
 	presetOrder = load("presetOrder", []),
 	activeComposerPane = load("activeComposerPane", "prompt"),
@@ -400,8 +402,8 @@ function updateUsageDisplay() {
 	$usageDisplay.title = `Paws: ${label.tooltip}`;
 }
 
-function updateAvailableResolutions() {
-	if (!resDropdown) {
+function updateAvailableOptions() {
+	if (!resDropdown || !aspectDropdown || !qualityDropdown) {
 		return;
 	}
 
@@ -411,27 +413,18 @@ function updateAvailableResolutions() {
 		return;
 	}
 
-	const available = [];
+	const options = selectedModel.options || {},
+		resolutions = options.resolutions?.length ? options.resolutions : ["1K"],
+		aspectRatios = options.aspect_ratios?.length ? options.aspect_ratios : [""],
+		qualities = options.qualities?.length ? options.qualities : ["auto"];
 
-	if (selectedModel.pricing) {
-		if (selectedModel.pricing.k_1 != null) {
-			available.push("1K");
-		}
+	resDropdown.setAvailable(resolutions);
+	aspectDropdown.setAvailable(aspectRatios);
+	qualityDropdown.setAvailable(qualities);
 
-		if (selectedModel.pricing.k_2 != null) {
-			available.push("2K");
-		}
-
-		if (selectedModel.pricing.k_4 != null) {
-			available.push("4K");
-		}
-	}
-
-	if (available.length > 0) {
-		resDropdown.setAvailable(available);
-	} else {
-		resDropdown.setAvailable(["1K", "2K", "4K"]);
-	}
+	store("resolution", $resolution.value);
+	store("aspect", $aspectRatio.value);
+	store("quality", $quality.value);
 
 	updateResolutionEstimate();
 }
@@ -791,6 +784,8 @@ function loadSettings(job) {
 
 		store("prompt", payload.prompt);
 	}
+
+	updateAvailableOptions();
 
 	referenceImages = [];
 
@@ -1630,7 +1625,7 @@ async function loadData() {
 			store("favorites", event.detail);
 		});
 
-		updateAvailableResolutions();
+		updateAvailableOptions();
 	} catch (err) {
 		console.error("Failed to load data:", err);
 
@@ -1931,7 +1926,7 @@ $prompt.addEventListener("keydown", event => {
 $model.addEventListener("change", () => {
 	store("model", $model.value);
 
-	updateAvailableResolutions();
+	updateAvailableOptions();
 });
 
 $resolution.addEventListener("change", () => {
@@ -2103,9 +2098,8 @@ $closeComparisonModal.addEventListener("click", () => {
 });
 
 resDropdown = dropdown($resolution);
-
-dropdown($aspectRatio);
-dropdown($quality);
+aspectDropdown = dropdown($aspectRatio);
+qualityDropdown = dropdown($quality);
 dropdown($maxRefResolution);
 
 if (referenceImages.length > 0) {

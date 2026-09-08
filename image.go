@@ -56,65 +56,47 @@ func (r *ChatRequest) Parse() (*openingrouter.ImageGenerationRequest, error) {
 
 	request.Prompt = prompt
 
-	switch r.Image.Resolution {
-	case "512":
-		request.Resolution = openingrouter.ImageResolution512
-	case "2K":
-		request.Resolution = openingrouter.ImageResolution2K
-	case "4K":
-		request.Resolution = openingrouter.ImageResolution4K
-	default:
-		request.Resolution = openingrouter.ImageResolution1K
+	resolution, ok := openingrouter.IsValidImageResolution(r.Image.Resolution)
+	if !ok {
+		return nil, fmt.Errorf("invalid resolution %q", r.Image.Resolution)
 	}
 
-	switch r.Image.Aspect {
-	case "1:1":
-		request.AspectRatio = openingrouter.ImageAspectRatio1x1
-	case "1:2":
-		request.AspectRatio = openingrouter.ImageAspectRatio1x2
-	case "1:4":
-		request.AspectRatio = openingrouter.ImageAspectRatio1x4
-	case "1:8":
-		request.AspectRatio = openingrouter.ImageAspectRatio1x8
-	case "2:1":
-		request.AspectRatio = openingrouter.ImageAspectRatio2x1
-	case "2:3":
-		request.AspectRatio = openingrouter.ImageAspectRatio2x3
-	case "3:2":
-		request.AspectRatio = openingrouter.ImageAspectRatio3x2
-	case "3:4":
-		request.AspectRatio = openingrouter.ImageAspectRatio3x4
-	case "4:1":
-		request.AspectRatio = openingrouter.ImageAspectRatio4x1
-	case "4:3":
-		request.AspectRatio = openingrouter.ImageAspectRatio4x3
-	case "4:5":
-		request.AspectRatio = openingrouter.ImageAspectRatio4x5
-	case "5:4":
-		request.AspectRatio = openingrouter.ImageAspectRatio5x4
-	case "8:1":
-		request.AspectRatio = openingrouter.ImageAspectRatio8x1
-	case "9:16":
-		request.AspectRatio = openingrouter.ImageAspectRatio9x16
-	case "16:9":
-		request.AspectRatio = openingrouter.ImageAspectRatio16x9
-	case "21:9":
-		request.AspectRatio = openingrouter.ImageAspectRatio21x9
-	default:
-		// don't set aspect ratio
+	if len(model.Options.Resolutions) > 0 {
+		request.Resolution = resolution
+
+		if !slices.Contains(model.Options.Resolutions, string(resolution)) {
+			return nil, fmt.Errorf("model does not support resolution %q", resolution)
+		}
 	}
 
-	switch r.Image.Quality {
-	case "low":
-		request.Quality = openingrouter.ImageQualityLow
-	case "medium":
-		request.Quality = openingrouter.ImageQualityMedium
-	case "high":
-		request.Quality = openingrouter.ImageQualityHigh
-	case "auto":
-		request.Quality = openingrouter.ImageQualityAuto
-	default:
-		// don't set quality
+	aspect, ok := openingrouter.IsValidImageAspectRatio(r.Image.Aspect)
+	if !ok {
+		return nil, fmt.Errorf("invalid aspect ratio %q", r.Image.Aspect)
+	}
+
+	if len(model.Options.AspectRatios) > 0 {
+		request.AspectRatio = aspect
+
+		if !slices.Contains(model.Options.AspectRatios, string(request.AspectRatio)) {
+			return nil, fmt.Errorf("model does not support aspect ratio %q", request.AspectRatio)
+		}
+	}
+
+	quality, ok := openingrouter.IsValidImageQuality(r.Image.Quality)
+	if !ok {
+		return nil, fmt.Errorf("invalid quality %q", r.Image.Quality)
+	}
+
+	if len(model.Options.Qualities) > 0 {
+		request.Quality = quality
+
+		if !slices.Contains(model.Options.Qualities, string(request.Quality)) {
+			return nil, fmt.Errorf("model does not support aspect ratio %q", request.AspectRatio)
+		}
+	}
+
+	if len(r.Images) > model.Options.MaxReferences {
+		return nil, fmt.Errorf("model only supports up to %d reference images", model.Options.MaxReferences)
 	}
 
 	for _, img := range r.Images {
@@ -126,13 +108,11 @@ func (r *ChatRequest) Parse() (*openingrouter.ImageGenerationRequest, error) {
 		})
 	}
 
-	stream := model.CanStream
+	stream := model.Options.CanStream
 
 	if len(r.Images) > 0 && slices.Contains(ReferenceImageNoStreamingModels[:], request.Model) {
 		stream = false
 	}
-
-	log.Println("streaming", stream, request.Model)
 
 	request.Stream = &stream
 

@@ -10,13 +10,21 @@ import (
 	"github.com/coalaura/openingrouter"
 )
 
+type ModelOptions struct {
+	CanStream     bool     `json:"can_stream"`
+	AspectRatios  []string `json:"aspect_ratios"`
+	Qualities     []string `json:"qualities"`
+	Resolutions   []string `json:"resolutions"`
+	MaxReferences int      `json:"max_references"`
+}
+
 type Model struct {
-	ID        string        `json:"id"`
-	Created   int64         `json:"created"`
-	Name      string        `json:"name"`
-	Pricing   *ImagePricing `json:"pricing,omitempty"`
-	Author    string        `json:"author,omitempty"`
-	CanStream bool          `json:"-"`
+	ID      string        `json:"id"`
+	Created int64         `json:"created"`
+	Name    string        `json:"name"`
+	Pricing *ImagePricing `json:"pricing,omitempty"`
+	Author  string        `json:"author,omitempty"`
+	Options ModelOptions  `json:"options"`
 }
 
 var (
@@ -84,19 +92,42 @@ func LoadModels() error {
 			continue
 		}
 
-		var noStreaming bool
+		var options ModelOptions
 
 		if full, ok := base[model.Slug]; ok {
-			noStreaming = !full.SupportsStreaming
+			options.CanStream = full.SupportsStreaming
+
+			for paramName, parameter := range full.SupportedParameters {
+				validEnum := parameter.Type == openingrouter.ImageCapabilityTypeEnum && len(parameter.Values) > 0
+
+				switch paramName {
+				case "aspect_ratio":
+					if validEnum {
+						options.AspectRatios = parameter.Values
+					}
+				case "quality":
+					if validEnum {
+						options.Qualities = parameter.Values
+					}
+				case "resolution":
+					if validEnum {
+						options.Resolutions = parameter.Values
+					}
+				case "input_references":
+					if parameter.Type == openingrouter.ImageCapabilityTypeRange && parameter.Max != nil {
+						options.MaxReferences = int(*parameter.Max)
+					}
+				}
+			}
 		}
 
 		m := &Model{
-			ID:        model.Slug,
-			Created:   model.CreatedAt.Unix(),
-			Name:      model.ShortName,
-			Author:    model.Author,
-			Pricing:   ImageModelPricing[model.Slug],
-			CanStream: !noStreaming,
+			ID:      model.Slug,
+			Created: model.CreatedAt.Unix(),
+			Name:    model.ShortName,
+			Author:  model.Author,
+			Pricing: ImageModelPricing[model.Slug],
+			Options: options,
 		}
 
 		newList = append(newList, m)

@@ -3,7 +3,7 @@ module paws
 go 1.27
 
 require (
-	github.com/coalaura/openingrouter v1.1.5
+	github.com/coalaura/openingrouter v1.1.6
 	github.com/coalaura/plain v1.5.3
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/goccy/go-yaml v1.19.2
