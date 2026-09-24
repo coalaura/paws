@@ -1143,6 +1143,7 @@ body.drag-over::after {
 	width: min(760px, 94vw);
 	min-width: 0 !important;
 	max-width: 94vw !important;
+	max-height: 94vh;
 	gap: 0 !important;
 }
 
@@ -1183,8 +1184,8 @@ body.drag-over::after {
 .crop-stage {
 	position: relative;
 	width: fit-content;
-	max-width: 94vw;
-	max-height: 68vh;
+	max-width: 100%;
+	max-height: 56vh;
 	margin: 0 auto;
 	line-height: 0;
 	user-select: none;
@@ -1194,8 +1195,8 @@ body.drag-over::after {
 
 .crop-stage img {
 	display: block;
-	max-width: 94vw;
-	max-height: 68vh;
+	max-width: 100%;
+	max-height: 56vh;
 	object-fit: contain;
 }
 
@@ -1237,6 +1238,111 @@ body.drag-over::after {
 	bottom: -7px;
 	left: -7px;
 	cursor: nesw-resize;
+}
+
+.crop-handle-n,
+.crop-handle-s {
+	left: 50%;
+	transform: translateX(-50%);
+	cursor: ns-resize;
+}
+
+.crop-handle-n {
+	top: -7px;
+}
+
+.crop-handle-s {
+	bottom: -7px;
+}
+
+.crop-handle-e,
+.crop-handle-w {
+	top: 50%;
+	transform: translateY(-50%);
+	cursor: ew-resize;
+}
+
+.crop-handle-e {
+	right: -7px;
+}
+
+.crop-handle-w {
+	left: -7px;
+}
+
+.crop-adjustments {
+	display: grid;
+	grid-template-columns: 110px minmax(0, 1fr);
+	align-items: center;
+	gap: 8px 14px;
+	padding: 12px 14px;
+}
+
+.crop-adjustments label {
+	display: grid;
+	grid-template-columns: 70px 4ch;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+}
+
+.crop-adjustments output {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	color: var(--c-subtext0);
+}
+
+.crop-adjustments input {
+	width: 100%;
+	height: 20px;
+	margin: 0;
+	background: transparent;
+	appearance: none;
+	cursor: pointer;
+}
+
+.crop-adjustments input::-webkit-slider-runnable-track {
+	height: 4px;
+	background: var(--c-surface2);
+	border-radius: 2px;
+}
+
+.crop-adjustments input::-moz-range-track {
+	height: 4px;
+	background: var(--c-surface2);
+	border-radius: 2px;
+}
+
+.crop-adjustments input::-webkit-slider-thumb {
+	width: 16px;
+	height: 16px;
+	margin-top: -6px;
+	background: var(--c-mauve);
+	border: 2px solid var(--c-mantle);
+	border-radius: 2px;
+	appearance: none;
+}
+
+.crop-adjustments input::-moz-range-thumb {
+	width: 16px;
+	height: 16px;
+	background: var(--c-mauve);
+	border: 2px solid var(--c-mantle);
+	border-radius: 2px;
+}
+
+.crop-adjustments input:hover::-webkit-slider-thumb {
+	background: var(--c-lavender);
+}
+
+.crop-adjustments input:hover::-moz-range-thumb {
+	background: var(--c-lavender);
+}
+
+.crop-adjustments input:focus-visible {
+	outline: 2px solid var(--c-lavender);
+	outline-offset: 2px;
+	border-radius: 2px;
 }
 
 .crop-actions {

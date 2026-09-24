@@ -71,6 +71,11 @@ const $loader = document.getElementById("global-loader"),
 	$cropStage = document.getElementById("crop-stage"),
 	$cropImage = document.getElementById("crop-image"),
 	$cropSelection = document.getElementById("crop-selection"),
+	$cropTitle = document.getElementById("crop-title"),
+	$cropBrightness = document.getElementById("crop-brightness"),
+	$cropContrast = document.getElementById("crop-contrast"),
+	$cropBrightnessValue = document.getElementById("crop-brightness-value"),
+	$cropContrastValue = document.getElementById("crop-contrast-value"),
 	$closeCropModal = document.getElementById("close-crop-modal"),
 	$resetCropBtn = document.getElementById("reset-crop-btn"),
 	$applyCropBtn = document.getElementById("apply-crop-btn"),
@@ -115,6 +120,10 @@ let rawRefs = load("referenceImages", []),
 	unsavedPreset = null,
 	pageDragDepth = 0,
 	cropItem = null,
+	cropJob = null,
+	cropJobImage = null,
+	cropSourceImage = null,
+	cropPreviewFrame = 0,
 	crop = null,
 	cropDrag = null,
 	draggedImageSource = null,
@@ -358,10 +367,104 @@ function renderCropSelection() {
 	$cropSelection.style.height = `${crop.height * 100}%`;
 }
 
-function openCropModal(item) {
-	cropItem = item;
+function updateCropAdjustments() {
+	$cropBrightnessValue.value = $cropBrightness.value;
+	$cropContrastValue.value = $cropContrast.value;
+}
+
+// Use the same tone curve for the preview and the saved pixels.
+function adjustImageTones(ctx, width, height, brightness, contrast) {
+	if (!brightness && !contrast) {
+		return;
+	}
+
+	const imageData = ctx.getImageData(0, 0, width, height),
+		pixels = imageData.data,
+		curve = new Uint8Array(256),
+		strength = 8 * Math.max(0, contrast) / 100,
+		endpoint = Math.tanh(strength / 2),
+		gamma = Math.pow(2, -brightness / 100);
+
+	for (let value = 0; value < 256; value++) {
+		const input = value / 255;
+
+		let tone = input;
+
+		if (contrast > 0) {
+			tone = (Math.tanh((input - 0.5) * strength) / endpoint + 1) / 2;
+		} else if (contrast < 0) {
+			// Lift blacks and lower whites instead of steepening the midtones.
+			tone = 0.5 + (input - 0.5) * (1 + contrast / 100);
+		}
+
+		curve[value] = Math.round(255 * Math.pow(clamp(tone, 0, 1), gamma));
+	}
+
+	for (let index = 0; index < pixels.length; index += 4) {
+		pixels[index] = curve[pixels[index]];
+		pixels[index + 1] = curve[pixels[index + 1]];
+		pixels[index + 2] = curve[pixels[index + 2]];
+	}
+
+	ctx.putImageData(imageData, 0, 0);
+}
+
+function renderCropPreview() {
+	if (!cropSourceImage?.complete || !cropSourceImage.naturalWidth) {
+		return;
+	}
+
+	const brightness = Number($cropBrightness.value),
+		contrast = Number($cropContrast.value);
+
+	if (!brightness && !contrast) {
+		$cropImage.src = cropSourceImage.src;
+
+		return;
+	}
+
+	const scale = Math.min(1, 1000 / Math.max(cropSourceImage.naturalWidth, cropSourceImage.naturalHeight)),
+		canvas = document.createElement("canvas");
+
+	canvas.width = Math.max(1, Math.round(cropSourceImage.naturalWidth * scale));
+	canvas.height = Math.max(1, Math.round(cropSourceImage.naturalHeight * scale));
+
+	const ctx = canvas.getContext("2d");
+
+	ctx.drawImage(cropSourceImage, 0, 0, canvas.width, canvas.height);
+
+	adjustImageTones(ctx, canvas.width, canvas.height, brightness, contrast);
+
+	$cropImage.src = canvas.toDataURL("image/png");
+}
+
+function openCropModal(item, jobImage = null) {
+	cropItem = jobImage ? null : item;
+	cropJob = jobImage ? item : null;
+	cropJobImage = jobImage;
+
 	crop = item.crop ? { ...item.crop } : { x: 0, y: 0, width: 1, height: 1 };
-	$cropImage.src = item.original;
+
+	$cropBrightness.value = item.brightness || 0;
+	$cropContrast.value = item.contrast || 0;
+	$cropTitle.textContent = jobImage ? "Edit Generation" : "Edit Reference";
+
+	updateCropAdjustments();
+
+	const source = new Image();
+
+	cropSourceImage = source;
+
+	source.onload = () => {
+		if (cropSourceImage === source) {
+			renderCropPreview();
+			renderCropSelection();
+		}
+	};
+
+	source.src = jobImage ? item.originalResult || item.result : item.original;
+
+	$cropImage.src = source.src;
 	$cropModal.classList.add("open");
 
 	requestAnimationFrame(renderCropSelection);
@@ -369,7 +472,14 @@ function openCropModal(item) {
 
 function closeCropModal() {
 	$cropModal.classList.remove("open");
+
 	cropItem = null;
+	cropJob = null;
+	cropJobImage = null;
+	cropSourceImage = null;
+
+	cancelAnimationFrame(cropPreviewFrame);
+
 	crop = null;
 	cropDrag = null;
 }
@@ -424,44 +534,57 @@ function readFileAsDataUrl(file) {
 	});
 }
 
-function processRefImage(dataUrl, cropRect) {
-	return new Promise(resolve => {
-		const maxRes = parseInt($maxRefResolution.value, 10) || 0,
-			img = new Image();
+function processImage(dataUrl, cropRect, brightness, contrast, maxRes, format) {
+	return new Promise((resolve, reject) => {
+		const img = new Image();
 
 		img.onload = () => {
-			const sourceX = Math.round((cropRect?.x || 0) * img.naturalWidth),
-				sourceY = Math.round((cropRect?.y || 0) * img.naturalHeight),
-				sourceWidth = Math.max(1, Math.round((cropRect?.width || 1) * img.naturalWidth)),
-				sourceHeight = Math.max(1, Math.round((cropRect?.height || 1) * img.naturalHeight));
-			let width = sourceWidth,
-				height = sourceHeight;
+			try {
+				const sourceX = Math.round((cropRect?.x || 0) * img.naturalWidth),
+					sourceY = Math.round((cropRect?.y || 0) * img.naturalHeight),
+					sourceWidth = Math.max(1, Math.round((cropRect?.width || 1) * img.naturalWidth)),
+					sourceHeight = Math.max(1, Math.round((cropRect?.height || 1) * img.naturalHeight));
 
-			if (maxRes > 0) {
-				const maxDim = Math.max(width, height);
+					let width = sourceWidth,
+					height = sourceHeight;
 
-				if (maxDim > maxRes) {
-					const scale = maxRes / maxDim;
+				if (maxRes > 0) {
+					const maxDim = Math.max(width, height);
 
-					width = Math.round(width * scale);
-					height = Math.round(height * scale);
+					if (maxDim > maxRes) {
+						const scale = maxRes / maxDim;
+
+						width = Math.round(width * scale);
+						height = Math.round(height * scale);
+					}
 				}
+
+				const canvas = document.createElement("canvas");
+
+				canvas.width = width;
+				canvas.height = height;
+
+				const ctx = canvas.getContext("2d");
+
+				ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+
+				adjustImageTones(ctx, width, height, brightness, contrast);
+
+				resolve(canvas.toDataURL(format, 0.92));
+			} catch (error) {
+				reject(error);
 			}
-
-			const canvas = document.createElement("canvas");
-
-			canvas.width = width;
-			canvas.height = height;
-
-			const ctx = canvas.getContext("2d");
-
-			ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
-
-			resolve(canvas.toDataURL("image/jpeg", 0.92));
 		};
 
+		img.onerror = reject;
 		img.src = dataUrl;
 	});
+}
+
+function processRefImage(dataUrl, cropRect, brightness = 0, contrast = 0) {
+	const maxRes = parseInt($maxRefResolution.value, 10) || 0;
+
+	return processImage(dataUrl, cropRect, brightness, contrast, maxRes, "image/jpeg");
 }
 
 function updateUsageDisplay() {
@@ -669,8 +792,8 @@ function renderReferenceImages() {
 		const editBtn = document.createElement("button");
 
 		editBtn.className = "edit-ref-btn";
-		editBtn.textContent = "Crop";
-		editBtn.title = "Crop image";
+		editBtn.textContent = "Edit";
+		editBtn.title = "Crop and adjust image";
 		editBtn.addEventListener("pointerdown", event => event.stopPropagation());
 		editBtn.addEventListener("click", () => openCropModal(item));
 
@@ -996,6 +1119,13 @@ function createJobDOM(job) {
 		compareItem.disabled = true;
 	}
 
+	const editImageItem = document.createElement("button");
+
+	editImageItem.className = "job-menu-item";
+	editImageItem.innerHTML = `${editSvg} Crop / Adjust Image`;
+	editImageItem.type = "button";
+	editImageItem.disabled = job.status !== "done";
+
 	const loadSettingsItem = document.createElement("button");
 
 	loadSettingsItem.className = "job-menu-item";
@@ -1021,6 +1151,7 @@ function createJobDOM(job) {
 	menu.appendChild(loadSettingsItem);
 	menu.appendChild(copyPromptItem);
 	menu.appendChild(imageHeading);
+	menu.appendChild(editImageItem);
 	menu.appendChild(useRefItem);
 	menu.appendChild(compareItem);
 
@@ -1204,6 +1335,7 @@ function createJobDOM(job) {
 		menu: menu,
 		useRefItem: useRefItem,
 		compareItem: compareItem,
+		editImageItem: editImageItem,
 		loadSettingsItem: loadSettingsItem,
 		copyPromptItem: copyPromptItem,
 		$img: img,
@@ -1351,6 +1483,11 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 		ui.card.classList.remove("menu-open");
 	});
 
+	ui.editImageItem.addEventListener("click", () => {
+		closeJobMenus();
+		openCropModal(job, ui.$img);
+	});
+
 	ui.loadSettingsItem.addEventListener("click", () => {
 		loadSettings(job);
 
@@ -1485,6 +1622,12 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 
 		job.status = "pending";
 		job.result = null;
+
+		delete job.originalResult;
+		delete job.crop;
+		delete job.brightness;
+		delete job.contrast;
+
 		job.error = null;
 		job.cost = null;
 		job.startedAt = Date.now();
@@ -1568,6 +1711,7 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 
 				if (chunk === "done" && !ui.$img.classList.contains("hidden")) {
 					ui.dlBtn.classList.remove("hidden");
+					ui.editImageItem.disabled = false;
 
 					job.status = "done";
 					job.finishedAt ||= Date.now();
@@ -1622,6 +1766,7 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 
 					ui.$img.classList.remove("blurred");
 					ui.dlBtn.classList.remove("hidden");
+					ui.editImageItem.disabled = false;
 
 					job.status = "done";
 					job.finishedAt ||= Date.now();
@@ -2112,7 +2257,9 @@ $maxRefResolution.addEventListener("change", async () => {
 
 	if (referenceImages.length > 0) {
 		for (const referenceImage of referenceImages) {
-			referenceImage.processed = await processRefImage(referenceImage.original, referenceImage.crop);
+			referenceImage.processed = await processRefImage(
+				referenceImage.original, referenceImage.crop, referenceImage.brightness || 0, referenceImage.contrast || 0
+			);
 		}
 
 		renderReferenceImages();
@@ -2134,30 +2281,78 @@ $cropModal.querySelector(".background").addEventListener("click", closeCropModal
 $closeCropModal.addEventListener("click", closeCropModal);
 
 $resetCropBtn.addEventListener("click", () => {
-	if (!cropItem) {
+	if (!cropItem && !cropJob) {
 		return;
 	}
 
 	crop = { x: 0, y: 0, width: 1, height: 1 };
 
+	$cropBrightness.value = 0;
+	$cropContrast.value = 0;
+
+	updateCropAdjustments();
+	renderCropPreview();
 	renderCropSelection();
 });
 
 $applyCropBtn.addEventListener("click", async () => {
-	if (!cropItem || !crop) {
+	if ((!cropItem && !cropJob) || !crop) {
 		return;
 	}
 
 	$cropModal.classList.add("loading");
 
-	cropItem.crop = crop.x === 0 && crop.y === 0 && crop.width === 1 && crop.height === 1 ? undefined : { ...crop };
-	cropItem.processed = await processRefImage(cropItem.original, cropItem.crop);
+	const selection = crop.x === 0 && crop.y === 0 && crop.width === 1 && crop.height === 1 ? undefined : { ...crop },
+		brightness = Number($cropBrightness.value),
+		contrast = Number($cropContrast.value);
 
-	$cropModal.classList.remove("loading");
+	try {
+		if (cropJob) {
+			const original = cropJob.originalResult || cropJob.result,
+				result = selection || brightness || contrast
+					? await processImage(original, selection, brightness, contrast, 0, "image/png")
+					: original;
 
-	closeCropModal();
-	renderReferenceImages();
+			cropJob.result = result;
+			cropJob.crop = selection;
+			cropJob.brightness = brightness;
+			cropJob.contrast = contrast;
+
+			if (result === original) {
+				delete cropJob.originalResult;
+			} else {
+				cropJob.originalResult = original;
+			}
+
+			setJobImageSource(cropJobImage, cropJob);
+			saveJobs();
+		} else {
+			const processed = await processRefImage(cropItem.original, selection, brightness, contrast);
+
+			cropItem.crop = selection;
+			cropItem.brightness = brightness;
+			cropItem.contrast = contrast;
+			cropItem.processed = processed;
+
+			renderReferenceImages();
+		}
+
+		closeCropModal();
+	} catch (error) {
+		console.error("Failed to edit image", error);
+		alert("Could not apply the image edits.");
+	} finally {
+		$cropModal.classList.remove("loading");
+	}
 });
+
+[$cropBrightness, $cropContrast].forEach(input => input.addEventListener("input", () => {
+	updateCropAdjustments();
+
+	cancelAnimationFrame(cropPreviewFrame);
+
+	cropPreviewFrame = requestAnimationFrame(renderCropPreview);
+}));
 
 $cropStage.addEventListener("pointerdown", event => {
 	if (!crop || event.target.closest(".crop-selection")) {
@@ -2240,6 +2435,10 @@ $cropStage.addEventListener("pointermove", event => {
 });
 
 $cropStage.addEventListener("pointerup", () => {
+	cropDrag = null;
+});
+
+$cropStage.addEventListener("pointercancel", () => {
 	cropDrag = null;
 });
 

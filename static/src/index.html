@@ -209,23 +209,34 @@
 
 			<div class="content crop-modal-content">
 				<div class="crop-toolbar">
-					<div class="crop-title">Crop Reference</div>
+					<div id="crop-title" class="crop-title">Edit Image</div>
 					<button id="close-crop-modal" class="close-btn" title="Close crop editor">&times;</button>
 				</div>
 
 				<div id="crop-stage" class="crop-stage">
-					<img id="crop-image" alt="Reference image crop preview" />
+					<img id="crop-image" alt="Image edit preview" draggable="false" />
 					<div id="crop-selection" class="crop-selection">
 						<span class="crop-handle crop-handle-nw" data-handle="nw"></span>
+						<span class="crop-handle crop-handle-n" data-handle="n"></span>
 						<span class="crop-handle crop-handle-ne" data-handle="ne"></span>
+						<span class="crop-handle crop-handle-e" data-handle="e"></span>
 						<span class="crop-handle crop-handle-se" data-handle="se"></span>
+						<span class="crop-handle crop-handle-s" data-handle="s"></span>
 						<span class="crop-handle crop-handle-sw" data-handle="sw"></span>
+						<span class="crop-handle crop-handle-w" data-handle="w"></span>
 					</div>
+				</div>
+
+				<div class="crop-adjustments">
+					<label for="crop-brightness"><span>Brightness</span><output id="crop-brightness-value">0</output></label>
+					<input id="crop-brightness" type="range" min="-100" max="100" value="0" />
+					<label for="crop-contrast"><span>Contrast</span><output id="crop-contrast-value">0</output></label>
+					<input id="crop-contrast" type="range" min="-100" max="100" value="0" />
 				</div>
 
 				<div class="crop-actions">
 					<button id="reset-crop-btn" class="modal-btn secondary">Reset</button>
-					<button id="apply-crop-btn" class="modal-btn primary">Apply Crop</button>
+					<button id="apply-crop-btn" class="modal-btn primary">Apply Changes</button>
 				</div>
 			</div>
 		</div>
