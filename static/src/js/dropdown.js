@@ -380,12 +380,18 @@ class Dropdown {
 				});
 
 				clone.addEventListener("auxclick", event => {
-					if (event.button !== 1) {
+					if (event.button !== 1 || !this.#favoritesEnabled) {
 						return;
 					}
 
+					event.preventDefault();
+
 					this.#makeFavorite(option);
 				});
+
+				if (this.#favoritesEnabled) {
+					this.#preventMiddleClickScroll(clone);
+				}
 
 				option.clones[tab] = clone;
 			}
@@ -401,8 +407,11 @@ class Dropdown {
 						return;
 					}
 
+					event.preventDefault();
 					this.#makeFavorite(option);
 				});
+
+				this.#preventMiddleClickScroll(_opt);
 			}
 		}
 
@@ -759,6 +768,14 @@ class Dropdown {
 		}
 	}
 
+	#preventMiddleClickScroll(element) {
+		element.addEventListener("mousedown", event => {
+			if (event.button === 1) {
+				event.preventDefault();
+			}
+		});
+	}
+
 	#createFavoriteClone(option, silent = false) {
 		if (option.favoriteClone) {
 			option.favoriteClone.remove();
@@ -821,8 +838,12 @@ class Dropdown {
 				return;
 			}
 
+			event.preventDefault();
+
 			this.#makeFavorite(option);
 		});
+
+		this.#preventMiddleClickScroll(option.favoriteClone);
 
 		// hover listener
 		option.favoriteClone.addEventListener("mouseenter", () => {
@@ -1288,16 +1309,6 @@ document.body.addEventListener("click", event => {
 
 		element.classList.remove("open");
 	});
-});
-
-document.addEventListener("click", event => {
-	if (!event.target.closest(".action-btn.more-btn") && !event.target.closest(".job-menu")) {
-		document.querySelectorAll(".job-menu.open").forEach(menu => {
-			menu.classList.remove("open");
-
-			menu.closest(".job-card")?.classList.remove("menu-open");
-		});
-	}
 });
 
 export function dropdown(el, favorites = false, tabs = []) {

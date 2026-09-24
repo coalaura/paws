@@ -615,6 +615,14 @@ input:focus {
 	box-shadow: inset 0 0 0 2px var(--c-red);
 }
 
+.job-card.reordering {
+	opacity: 0.65;
+}
+
+.job-card.menu-open {
+	z-index: 30;
+}
+
 .job-image-container {
 	position: absolute;
 	inset: 0;
@@ -651,6 +659,24 @@ input:focus {
 	opacity: 1;
 }
 
+.job-pinned-badge {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	z-index: 21;
+	display: flex;
+	align-items: center;
+	padding: 4px;
+	background: var(--c-yellow);
+	color: var(--c-crust);
+	border-radius: 2px;
+}
+
+.job-pinned-badge svg {
+	width: 14px;
+	height: 14px;
+}
+
 .job-specs {
 	position: absolute;
 	top: 8px;
@@ -666,6 +692,10 @@ input:focus {
 
 .job-card:hover .job-specs {
 	opacity: 1;
+}
+
+.job-card.pinned .job-specs {
+	top: 36px;
 }
 
 .spec-badge {
@@ -764,28 +794,33 @@ input:focus {
 	color: var(--c-crust);
 }
 
-.action-btn.more-btn {
-	position: relative;
+.move-indicator {
+	position: absolute;
+	bottom: 4px;
+	right: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--c-subtext0);
+	pointer-events: none;
 }
 
-.action-btn.pin-btn.active {
-	background: var(--c-yellow);
-	border-color: var(--c-yellow);
-	color: var(--c-crust);
+.move-indicator svg {
+	width: 16px;
+	height: 16px;
 }
 
 .job-menu {
 	position: absolute;
-	top: 100%;
-	left: 0;
-	margin-top: 4px;
-	z-index: 30;
+	z-index: 35;
 	background: var(--c-mantle);
 	border: 1px solid var(--c-surface1);
 	border-radius: 2px;
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-	padding: 4px;
-	min-width: 180px;
+	padding: 6px;
+	min-width: 210px;
+	max-width: calc(100cqw - 16px);
+	overflow-y: auto;
 	opacity: 0;
 	visibility: hidden;
 	transform: translateY(-4px);
@@ -816,8 +851,41 @@ input:focus {
 	white-space: nowrap;
 }
 
-.job-menu-item:hover {
+.job-menu button.job-menu-item {
+	width: 100%;
+	background: transparent;
+	border: 0;
+	text-align: left;
+	font-family: inherit;
+}
+
+.job-menu-item:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.job-menu button.job-menu-item:hover,
+.job-menu button.job-menu-item:focus-visible {
 	background: var(--c-surface0);
+}
+
+.job-menu button.job-menu-item:disabled:hover {
+	background: transparent;
+}
+
+.pin-menu-item.active svg {
+	color: var(--c-yellow);
+}
+
+.job-menu-heading {
+	margin: 6px 8px 2px;
+	padding-top: 8px;
+	border-top: 1px solid var(--c-surface1);
+	color: var(--c-subtext0);
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
 }
 
 .job-menu-item svg {
@@ -1147,10 +1215,29 @@ body.drag-over::after {
 	border-radius: 50%;
 }
 
-.crop-handle-nw { top: -7px; left: -7px; cursor: nwse-resize; }
-.crop-handle-ne { top: -7px; right: -7px; cursor: nesw-resize; }
-.crop-handle-se { bottom: -7px; right: -7px; cursor: nwse-resize; }
-.crop-handle-sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.crop-handle-nw {
+	top: -7px;
+	left: -7px;
+	cursor: nwse-resize;
+}
+
+.crop-handle-ne {
+	top: -7px;
+	right: -7px;
+	cursor: nesw-resize;
+}
+
+.crop-handle-se {
+	bottom: -7px;
+	right: -7px;
+	cursor: nwse-resize;
+}
+
+.crop-handle-sw {
+	bottom: -7px;
+	left: -7px;
+	cursor: nesw-resize;
+}
 
 .crop-actions {
 	justify-content: flex-end;
@@ -1191,14 +1278,18 @@ body.drag-over::after {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	padding: 24px 16px 16px 16px;
+	padding: 24px 28px 16px 16px;
 	background: linear-gradient(transparent, rgba(24, 25, 38, 0.9) 40%);
 	font-size: 13px;
 	color: var(--c-text);
 	z-index: 15;
-	pointer-events: none;
+	cursor: grab;
 	opacity: 0.8;
 	transition: opacity 0.2s;
+}
+
+.job-meta:active {
+	cursor: grabbing;
 }
 
 .job-card:hover .job-meta {

@@ -8,7 +8,8 @@ import downloadSvg from "../css/icons/download.svg?raw";
 import editSvg from "../css/icons/edit.svg?raw";
 import imageSvg from "../css/icons/image.svg?raw";
 import compareSvg from "../css/icons/compare.svg?raw";
-import moreSvg from "../css/icons/more.svg?raw";
+import copySvg from "../css/icons/copy.svg?raw";
+import moveSvg from "../css/icons/move.svg?raw";
 import pinSvg from "../css/icons/pin.svg?raw";
 import retrySvg from "../css/icons/retry.svg?raw";
 
@@ -116,7 +117,8 @@ let rawRefs = load("referenceImages", []),
 	cropItem = null,
 	crop = null,
 	cropDrag = null,
-	draggedImageSource = null;
+	draggedImageSource = null,
+	draggedJobCard = null;
 
 const jobImageUrls = new Map();
 
@@ -197,6 +199,78 @@ function saveJobs() {
 
 	store("jobs", jobs);
 }
+
+function clearJobDrag() {
+	draggedJobCard?.classList.remove("reordering");
+	draggedJobCard = null;
+}
+
+function closeJobMenus() {
+	document.querySelectorAll(".job-menu.open").forEach(menu => {
+		menu.classList.remove("open");
+
+		menu.closest(".job-card")?.classList.remove("menu-open");
+	});
+}
+
+$grid.addEventListener("dragover", event => {
+	if (!draggedJobCard) {
+		return;
+	}
+
+	event.preventDefault();
+	event.dataTransfer.dropEffect = "move";
+
+	const target = event.target.closest(".job-card");
+
+	if (!target || target === draggedJobCard) {
+		return;
+	}
+
+	const rect = target.getBoundingClientRect(),
+		columns = $grid.clientWidth > rect.width * 1.5,
+		before = columns ? event.clientX < rect.left + rect.width / 2 : event.clientY < rect.top + rect.height / 2;
+
+	if (before && target.previousElementSibling !== draggedJobCard) {
+		target.before(draggedJobCard);
+	} else if (!before && target.nextElementSibling !== draggedJobCard) {
+		target.after(draggedJobCard);
+	}
+});
+
+$grid.addEventListener("drop", event => {
+	if (!draggedJobCard) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+
+	finishJobDrag();
+});
+
+function finishJobDrag() {
+	if (!draggedJobCard) {
+		return;
+	}
+
+	const jobsById = new Map(jobs.map(job => [job.id, job]));
+
+	jobs = Array.from($grid.querySelectorAll(".job-card"), card => jobsById.get(card.dataset.jobId));
+
+	saveJobs();
+	clearJobDrag();
+}
+
+$grid.addEventListener("dragend", finishJobDrag);
+
+document.addEventListener("click", event => {
+	if (!event.target.closest(".job-menu")) {
+		closeJobMenus();
+	}
+});
+
+$grid.parentElement.addEventListener("scroll", closeJobMenus);
 
 function setJobImageSource(img, job) {
 	const result = job.result;
@@ -808,6 +882,8 @@ function createJobDOM(job) {
 		promptText = job.payload.prompt;
 
 	card.className = "job-card";
+	card.dataset.jobId = job.id;
+	card.classList.toggle("pinned", Boolean(job.pinned));
 
 	if (job.status === "errored") {
 		card.classList.add("errored");
@@ -853,11 +929,25 @@ function createJobDOM(job) {
 
 	const pinBtn = document.createElement("button");
 
-	pinBtn.className = "action-btn pin-btn";
-	pinBtn.innerHTML = pinSvg;
+	pinBtn.className = "job-menu-item pin-menu-item";
+	pinBtn.type = "button";
+	pinBtn.innerHTML = `${pinSvg}<span>${job.pinned ? "Unpin generation" : "Pin generation"}</span>`;
 	pinBtn.title = job.pinned ? "Unpin generation" : "Pin generation";
 	pinBtn.classList.toggle("active", Boolean(job.pinned));
 	pinBtn.setAttribute("aria-pressed", String(Boolean(job.pinned)));
+
+	const pinnedBadge = document.createElement("div");
+
+	pinnedBadge.className = "job-pinned-badge";
+	pinnedBadge.innerHTML = pinSvg;
+	pinnedBadge.title = "Pinned generation";
+	pinnedBadge.classList.toggle("hidden", !job.pinned);
+
+	const moveIndicator = document.createElement("span");
+
+	moveIndicator.className = "move-indicator";
+	moveIndicator.innerHTML = moveSvg;
+	moveIndicator.setAttribute("aria-hidden", "true");
 
 	const dlBtn = document.createElement("button");
 
@@ -881,57 +971,67 @@ function createJobDOM(job) {
 	retryBtn.innerHTML = retrySvg;
 	retryBtn.title = "Retry";
 
-	const moreBtn = document.createElement("button");
-
-	moreBtn.className = "action-btn more-btn";
-	moreBtn.innerHTML = moreSvg;
-	moreBtn.title = "More actions";
-
 	const menu = document.createElement("div");
 
 	menu.className = "job-menu";
-
-	const useRefItem = document.createElement("div");
+	const useRefItem = document.createElement("button");
 
 	const refs = job.payload.images || [];
 
 	useRefItem.className = "job-menu-item";
 	useRefItem.innerHTML = `${imageSvg} Use as Reference`;
+	useRefItem.type = "button";
 
 	if (!job.result) {
-		useRefItem.style.opacity = "0.5";
-		useRefItem.style.pointerEvents = "none";
+		useRefItem.disabled = true;
 	}
 
-	const compareItem = document.createElement("div");
+	const compareItem = document.createElement("button");
 
 	compareItem.className = "job-menu-item";
 	compareItem.innerHTML = `${compareSvg} Compare Before / After`;
+	compareItem.type = "button";
 
 	if (!job.result || refs.length === 0) {
-		compareItem.style.opacity = "0.5";
-		compareItem.style.pointerEvents = "none";
+		compareItem.disabled = true;
 	}
 
-	const loadSettingsItem = document.createElement("div");
+	const loadSettingsItem = document.createElement("button");
 
 	loadSettingsItem.className = "job-menu-item";
 	loadSettingsItem.innerHTML = `${editSvg} Load Settings`;
+	loadSettingsItem.type = "button";
 
+	const copyPromptItem = document.createElement("button");
+
+	copyPromptItem.className = "job-menu-item";
+	copyPromptItem.innerHTML = `${copySvg} Copy Entire Prompt`;
+	copyPromptItem.type = "button";
+
+	const promptHeading = document.createElement("div"),
+		imageHeading = document.createElement("div");
+
+	promptHeading.className = "job-menu-heading";
+	promptHeading.textContent = "Prompt";
+	imageHeading.className = "job-menu-heading";
+	imageHeading.textContent = "Image";
+
+	menu.appendChild(pinBtn);
+	menu.appendChild(promptHeading);
+	menu.appendChild(loadSettingsItem);
+	menu.appendChild(copyPromptItem);
+	menu.appendChild(imageHeading);
 	menu.appendChild(useRefItem);
 	menu.appendChild(compareItem);
-	menu.appendChild(loadSettingsItem);
 
 	actions.appendChild(closeBtn);
-	actions.appendChild(pinBtn);
-	actions.appendChild(moreBtn);
 	actions.appendChild(retryBtn);
 	actions.appendChild(dlBtn);
-	actions.appendChild(menu);
 
 	imgContainer.appendChild(img);
 	imgContainer.appendChild(spinner);
 	imgContainer.appendChild(actions);
+	imgContainer.appendChild(pinnedBadge);
 
 	const specs = document.createElement("div");
 
@@ -978,6 +1078,7 @@ function createJobDOM(job) {
 	const meta = document.createElement("div");
 
 	meta.className = "job-meta";
+	meta.draggable = true;
 
 	if (refs.length > 0) {
 		const refsDiv = document.createElement("div");
@@ -1086,21 +1187,25 @@ function createJobDOM(job) {
 
 	meta.appendChild(promptDiv);
 	meta.appendChild(errorDiv);
+	meta.appendChild(moveIndicator);
 
 	card.appendChild(imgContainer);
 	card.appendChild(meta);
+	card.appendChild(menu);
 
 	return {
 		card: card,
 		closeBtn: closeBtn,
 		pinBtn: pinBtn,
+		pinnedBadge: pinnedBadge,
+		meta: meta,
 		dlBtn: dlBtn,
 		retryBtn: retryBtn,
-		moreBtn: moreBtn,
 		menu: menu,
 		useRefItem: useRefItem,
 		compareItem: compareItem,
 		loadSettingsItem: loadSettingsItem,
+		copyPromptItem: copyPromptItem,
 		$img: img,
 		$spinner: spinner,
 		$error: errorDiv,
@@ -1159,11 +1264,39 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 	ui.pinBtn.addEventListener("click", () => {
 		job.pinned = !job.pinned;
 
+		ui.card.classList.toggle("pinned", job.pinned);
 		ui.pinBtn.classList.toggle("active", job.pinned);
 		ui.pinBtn.title = job.pinned ? "Unpin generation" : "Pin generation";
+		ui.pinBtn.querySelector("span").textContent = job.pinned ? "Unpin generation" : "Pin generation";
 		ui.pinBtn.setAttribute("aria-pressed", String(job.pinned));
+		ui.pinnedBadge.classList.toggle("hidden", !job.pinned);
 
 		saveJobs();
+
+		ui.menu.classList.remove("open");
+		ui.card.classList.remove("menu-open");
+	});
+
+	ui.meta.addEventListener("dragstart", event => {
+		if (event.target.closest(".job-refs")) {
+			return;
+		}
+
+		closeJobMenus();
+
+		draggedJobCard = ui.card;
+
+		event.dataTransfer.setData("application/paws-job-reorder", job.id);
+		event.dataTransfer.effectAllowed = "move";
+
+		ui.card.style.animation = "none";
+		ui.card.classList.add("reordering");
+	});
+
+	ui.meta.addEventListener("click", event => {
+		if (!event.target.closest(".job-refs")) {
+			ui.$img.click();
+		}
 	});
 
 	ui.dlBtn.addEventListener("click", () => {
@@ -1185,19 +1318,23 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 		}
 	});
 
-	ui.moreBtn.addEventListener("click", event => {
-		event.stopPropagation();
+	ui.card.addEventListener("contextmenu", event => {
+		event.preventDefault();
 
-		document.querySelectorAll(".job-menu.open").forEach(mnu => {
-			if (mnu !== ui.menu) {
-				mnu.classList.remove("open");
+		closeJobMenus();
 
-				mnu.closest(".job-card")?.classList.remove("menu-open");
-			}
-		});
+		const panelRect = $grid.parentElement.getBoundingClientRect(),
+			cardRect = ui.card.getBoundingClientRect();
 
-		ui.menu.classList.toggle("open");
-		ui.card.classList.toggle("menu-open", ui.menu.classList.contains("open"));
+		ui.menu.style.maxHeight = `${Math.max(0, panelRect.height - 16)}px`;
+		ui.menu.classList.add("open");
+		ui.card.classList.add("menu-open");
+
+		const left = Math.max(panelRect.left + 8, Math.min(event.clientX, panelRect.right - ui.menu.offsetWidth - 8)),
+			top = Math.max(panelRect.top + 8, Math.min(event.clientY, panelRect.bottom - ui.menu.offsetHeight - 8));
+
+		ui.menu.style.left = `${left - cardRect.left}px`;
+		ui.menu.style.top = `${top - cardRect.top}px`;
 	});
 
 	ui.useRefItem.addEventListener("click", () => {
@@ -1219,6 +1356,19 @@ function setupJobUI(ui, job, controller = null, clearTimer = null) {
 
 		ui.menu.classList.remove("open");
 		ui.card.classList.remove("menu-open");
+	});
+
+	ui.copyPromptItem.addEventListener("click", async () => {
+		try {
+			await navigator.clipboard.writeText(`${job.payload.system || ""}\n\n${job.payload.prompt || ""}`);
+
+			ui.menu.classList.remove("open");
+			ui.card.classList.remove("menu-open");
+		} catch (error) {
+			console.error("Failed to copy prompt", error);
+
+			alert("Could not copy the prompt to the clipboard.");
+		}
 	});
 
 	ui.$img.addEventListener("dragstart", event => {
@@ -1449,13 +1599,11 @@ async function startGenerationJob(retryJob = null, replaceCard = null) {
 					ui.$img.classList.remove("hidden");
 
 					if (ui.useRefItem) {
-						ui.useRefItem.style.opacity = "1";
-						ui.useRefItem.style.pointerEvents = "auto";
+						ui.useRefItem.disabled = false;
 					}
 
 					if (ui.compareItem && (job.payload.images || []).length > 0) {
-						ui.compareItem.style.opacity = "1";
-						ui.compareItem.style.pointerEvents = "auto";
+						ui.compareItem.disabled = false;
 					}
 
 					ui.$img.draggable = true;
@@ -1623,7 +1771,9 @@ async function loadData() {
 
 		const favorites = load("favorites", []);
 
-		dropdown($model, favorites);
+		const modelDropdown = dropdown($model, favorites);
+
+		modelDropdown.switchTab(load("modelTab", "all") === "favorites" ? "favorites" : "all");
 
 		$model.addEventListener("favorite", event => {
 			store("favorites", event.detail);
@@ -1931,6 +2081,12 @@ $model.addEventListener("change", () => {
 	store("model", $model.value);
 
 	updateAvailableOptions();
+});
+
+$model.addEventListener("tab", event => {
+	if (event.detail === "all" || event.detail === "favorites") {
+		store("modelTab", event.detail);
+	}
 });
 
 $resolution.addEventListener("change", () => {
@@ -2427,6 +2583,8 @@ $deletePresetBtn.addEventListener("click", () => {
 
 document.addEventListener("keydown", event => {
 	if (event.key === "Escape") {
+		closeJobMenus();
+
 		if ($savePresetModal?.classList.contains("open")) {
 			$savePresetModal.classList.remove("open");
 		}
