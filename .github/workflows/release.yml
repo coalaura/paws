@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest
 
     strategy:
       matrix:
@@ -67,7 +67,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: avrea-ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v6
