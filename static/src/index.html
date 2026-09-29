@@ -169,7 +169,11 @@
 			<div class="content image-modal-content">
 				<button id="close-image-modal" class="close-btn">&times;</button>
 
-				<img id="full-image" src="" alt="Full Resolution" />
+				<img id="full-image" src="" alt="Full Resolution" draggable="false" />
+			</div>
+
+			<div id="image-zoom" class="image-zoom hidden" aria-hidden="true">
+				<img id="zoom-image" alt="" draggable="false" />
 			</div>
 		</div>
 

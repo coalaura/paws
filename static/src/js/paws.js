@@ -66,6 +66,8 @@ const $loader = document.getElementById("global-loader"),
 	$login = document.getElementById("login"),
 	$imageModal = document.getElementById("image-modal"),
 	$fullImage = document.getElementById("full-image"),
+	$imageZoom = document.getElementById("image-zoom"),
+	$zoomImage = document.getElementById("zoom-image"),
 	$closeImageModal = document.getElementById("close-image-modal"),
 	$cropModal = document.getElementById("crop-modal"),
 	$cropStage = document.getElementById("crop-stage"),
@@ -119,6 +121,7 @@ let rawRefs = load("referenceImages", []),
 	activePresetName = "",
 	unsavedPreset = null,
 	pageDragDepth = 0,
+	imageZoomPointerId = null,
 	cropItem = null,
 	cropJob = null,
 	cropJobImage = null,
@@ -347,9 +350,52 @@ function addReferenceImage(source) {
 }
 
 function openImageModal(src) {
+	stopImageZoom();
+
 	$fullImage.src = src;
+	$zoomImage.src = src;
 
 	$imageModal.classList.add("open");
+}
+
+function stopImageZoom() {
+	if (imageZoomPointerId === null) {
+		return;
+	}
+
+	const pointerId = imageZoomPointerId;
+
+	imageZoomPointerId = null;
+
+	$imageZoom.classList.add("hidden");
+
+	if ($fullImage.hasPointerCapture(pointerId)) {
+		$fullImage.releasePointerCapture(pointerId);
+	}
+}
+
+function closeImageModal() {
+	stopImageZoom();
+	$imageModal.classList.remove("open");
+}
+
+function updateImageZoom(event) {
+	const bounds = $fullImage.getBoundingClientRect(),
+		zoomWidth = $imageZoom.clientWidth,
+		zoomHeight = $imageZoom.clientHeight,
+		zoom = 2,
+		imageWidth = bounds.width * zoom,
+		imageHeight = bounds.height * zoom,
+		sourceX = clamp(event.clientX - bounds.left, 0, bounds.width),
+		sourceY = clamp(event.clientY - bounds.top, 0, bounds.height);
+
+	$zoomImage.style.width = `${imageWidth}px`;
+	$zoomImage.style.height = `${imageHeight}px`;
+	$zoomImage.style.left = `${clamp(zoomWidth / 2 - sourceX * zoom, zoomWidth - imageWidth, 0)}px`;
+	$zoomImage.style.top = `${clamp(zoomHeight / 2 - sourceY * zoom, zoomHeight - imageHeight, 0)}px`;
+
+	$imageZoom.style.left = `${event.clientX - $imageZoom.offsetWidth / 2}px`;
+	$imageZoom.style.top = `${event.clientY - $imageZoom.offsetHeight / 2}px`;
 }
 
 function clamp(value, min, max) {
@@ -2268,13 +2314,51 @@ $maxRefResolution.addEventListener("change", async () => {
 
 $generateBtn.addEventListener("click", () => startGenerationJob());
 
-$imageModal.querySelector(".background").addEventListener("click", () => {
-	$imageModal.classList.remove("open");
+$fullImage.addEventListener("pointerdown", event => {
+	if (event.button !== 0 || event.pointerType === "touch" || imageZoomPointerId !== null || !$fullImage.naturalWidth) {
+		return;
+	}
+
+	event.preventDefault();
+
+	imageZoomPointerId = event.pointerId;
+
+	$fullImage.setPointerCapture(event.pointerId);
+
+	$imageZoom.classList.remove("hidden");
+
+	updateImageZoom(event);
 });
 
-$closeImageModal.addEventListener("click", () => {
-	$imageModal.classList.remove("open");
+$fullImage.addEventListener("pointermove", event => {
+	if (event.pointerId !== imageZoomPointerId) {
+		return;
+	}
+
+	if (!(event.buttons & 1)) {
+		stopImageZoom();
+
+		return;
+	}
+
+	updateImageZoom(event);
 });
+
+for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+	$fullImage.addEventListener(eventName, event => {
+		if (event.pointerId === imageZoomPointerId) {
+			stopImageZoom();
+		}
+	});
+}
+
+$fullImage.addEventListener("dragstart", event => event.preventDefault());
+
+window.addEventListener("blur", stopImageZoom);
+
+$imageModal.querySelector(".background").addEventListener("click", closeImageModal);
+
+$closeImageModal.addEventListener("click", closeImageModal);
 
 $cropModal.querySelector(".background").addEventListener("click", closeCropModal);
 
@@ -2789,7 +2873,7 @@ document.addEventListener("keydown", event => {
 		}
 
 		if ($imageModal?.classList.contains("open")) {
-			$imageModal.classList.remove("open");
+			closeImageModal();
 		}
 
 		if ($comparisonModal?.classList.contains("open")) {

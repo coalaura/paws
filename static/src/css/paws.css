@@ -956,6 +956,26 @@ body.drag-over::after {
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
+.image-zoom {
+	position: fixed;
+	z-index: 100;
+	width: min(280px, calc(100vw - 32px), calc(100vh - 32px));
+	aspect-ratio: 1;
+	overflow: hidden;
+	border: 2px solid var(--c-text);
+	border-radius: 4px;
+	background: var(--c-crust);
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+	pointer-events: none;
+}
+
+.image-zoom img {
+	position: absolute;
+	max-width: none;
+	max-height: none;
+	user-select: none;
+}
+
 .image-modal-content .close-btn {
 	position: absolute;
 	top: -16px;
