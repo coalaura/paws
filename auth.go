@@ -139,8 +139,10 @@ func HandleAuthentication(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:  "paws_token",
-		Value: env.SignAuthToken(user),
+		Name:     "paws_token",
+		Value:    env.SignAuthToken(user),
+		HttpOnly: true,
+		Secure:   env.Server.Secure,
 	})
 
 	RespondJson(w, http.StatusOK, map[string]any{

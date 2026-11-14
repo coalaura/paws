@@ -80,6 +80,8 @@ tokens:
 server:
   # port to serve paws on (required; default 3444)
   port: 3444
+  # whether browser connections use TLS, including through a reverse proxy (default: false); enables secure cookies
+  secure: false
 
 settings:
   # the http timeout to use for completion requests in seconds (optional; default: 300s)
@@ -109,6 +111,8 @@ authentication:
 ```
 
 After a successful login, paws issues a signed (HMAC-SHA256) token, using the server secret (`tokens.secret` in `config.yml`). This is stored as a cookie and re-used for future authentications.
+
+The cookie always uses `HttpOnly`. Set `server.secure: true` when browsers access paws over HTTPS, including through a reverse proxy, to also set `Secure`. The default is `false`. This setting controls cookie security; TLS termination is configured separately at the reverse proxy.
 
 ## Nginx (optional)
 

@@ -10,6 +10,8 @@ tokens:
 server:
   # port to serve paws on (required; default 3444)
   port: 3444
+  # whether browser connections use TLS, including through a reverse proxy (default: false); enables secure cookies
+  secure: false
 
 settings:
   # the http timeout to use for completion requests in seconds (optional; default: 300s)

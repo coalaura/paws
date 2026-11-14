@@ -21,7 +21,8 @@ type EnvTokens struct {
 }
 
 type EnvServer struct {
-	Port int64 `yaml:"port"`
+	Port   int64 `yaml:"port"`
+	Secure bool  `yaml:"secure"`
 }
 
 type EnvSettings struct {
@@ -181,7 +182,8 @@ func (e *Environment) Store() error {
 			"$.tokens.secret":     {yaml.HeadComment(" server secret for signing auth tokens; auto-generated if empty")},
 			"$.tokens.openrouter": {yaml.HeadComment(" openrouter.ai api token (required)")},
 
-			"$.server.port": {yaml.HeadComment(" port to serve paws on (required; default 3444)")},
+			"$.server.port":   {yaml.HeadComment(" port to serve paws on (required; default 3444)")},
+			"$.server.secure": {yaml.HeadComment(" whether browser connections use TLS, including through a reverse proxy (default: false); enables secure cookies")},
 
 			"$.settings.timeout":          {yaml.HeadComment(" the http timeout to use for completion requests in seconds (optional; default: 300s)")},
 			"$.settings.refresh-interval": {yaml.HeadComment(" the interval in which the model list is refreshed in minutes (optional; default: 30m)")},
