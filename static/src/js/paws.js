@@ -16,7 +16,7 @@ import { Gallery } from "./gallery.js";
 import { bindImage, bindResponsiveImage, releaseImage, releaseImages, acquireImage, imageDataURL } from "./image-assets.js";
 import { stream } from "./image-stream.js";
 import { adjustImageTones } from "./image-transform.js";
-import { connectDB, load, store, loadJobs, persistJobs, importAsset, deriveAsset, assetInfo, retainAsset } from "./storage.js";
+import { connectDB, load, store, loadJobs, persistJobs, importAsset, isAssetId, deriveAsset, assetInfo, retainAsset } from "./storage.js";
 
 const MaxImages = 4,
 	UsageTypes = ["daily", "weekly", "monthly", "total"],
@@ -2099,8 +2099,13 @@ document.addEventListener("drop", async event => {
 	if (internal || draggedImageSource) {
 		event.preventDefault();
 
-		const id = internal || draggedImageSource,
-			release = retainAsset(id);
+		const id = internal || draggedImageSource;
+
+		if (!isAssetId(id)) {
+			return;
+		}
+
+		const release = retainAsset(id);
 
 		try {
 			await addReferenceImage(id);

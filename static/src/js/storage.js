@@ -264,9 +264,18 @@ export function retainAsset(id) {
 	};
 }
 
+export function isAssetId(source) {
+	return typeof source === "string" && source.length === 70 && /^asset:[a-f0-9]{64}$/.test(source);
+}
+
 export async function importAsset(source, signal, dimensions) {
-	if (typeof source === "string" && source.startsWith("asset:")) {
+	if (isAssetId(source)) {
 		return source;
+	}
+
+	// Only inline image URLs may reach fetch; imports must never make network requests.
+	if (!(source instanceof Blob) && (typeof source !== "string" || !/^data:image\/[a-zA-Z0-9.+-]+(?:;[^,]*)?,/.test(source))) {
+		throw new TypeError("Expected an image file, image data URL, or asset ID");
 	}
 
 	const blob = source instanceof Blob ? source : await (await fetch(source, { signal: signal })).blob(),
