@@ -245,6 +245,34 @@
 			</div>
 		</div>
 
+		<div id="resize-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="resize-title" aria-describedby="resize-description">
+			<div class="background"></div>
+
+			<form id="resize-form" class="content">
+				<div id="resize-title" class="header">Resize Reference</div>
+				<div id="resize-description">Adjust the dimensions or percentage of the original size. The aspect ratio stays locked.</div>
+				<div id="resize-error" class="error" role="alert"></div>
+				<div class="resize-dimensions">
+					<div class="form-group">
+						<label for="resize-width">Width</label>
+						<input id="resize-width" type="number" min="1" step="1" required />
+					</div>
+					<div class="form-group">
+						<label for="resize-height">Height</label>
+						<input id="resize-height" type="number" min="1" step="1" required />
+					</div>
+				</div>
+				<div class="resize-scale">
+					<label for="resize-percent">Scale <output id="resize-percent-value" for="resize-percent">100%</output></label>
+					<input id="resize-percent" type="range" min="1" max="100" step="1" value="100" />
+				</div>
+				<div class="buttons">
+					<button id="cancel-resize-btn" type="button" class="modal-btn secondary">Cancel</button>
+					<button id="apply-resize-btn" type="submit" class="modal-btn primary">Resize</button>
+				</div>
+			</form>
+		</div>
+
 		<div id="save-preset-modal" class="modal">
 			<div class="background"></div>
 

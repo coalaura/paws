@@ -74,6 +74,15 @@ const $loader = document.getElementById("global-loader"),
 	$closeCropModal = document.getElementById("close-crop-modal"),
 	$resetCropBtn = document.getElementById("reset-crop-btn"),
 	$applyCropBtn = document.getElementById("apply-crop-btn"),
+	$resizeModal = document.getElementById("resize-modal"),
+	$resizeForm = document.getElementById("resize-form"),
+	$resizeWidth = document.getElementById("resize-width"),
+	$resizeHeight = document.getElementById("resize-height"),
+	$resizePercent = document.getElementById("resize-percent"),
+	$resizePercentValue = document.getElementById("resize-percent-value"),
+	$resizeError = document.getElementById("resize-error"),
+	$cancelResizeBtn = document.getElementById("cancel-resize-btn"),
+	$applyResizeBtn = document.getElementById("apply-resize-btn"),
 	$comparisonModal = document.getElementById("comparison-modal"),
 	$comparisonBefore = document.getElementById("comparison-before"),
 	$comparisonAfter = document.getElementById("comparison-after"),
@@ -131,6 +140,7 @@ let referenceImages = load("referenceImages", []),
 	cropPreviewFrame = 0,
 	crop = null,
 	cropDrag = null,
+	resizeState = null,
 	draggedImageSource = null,
 	draggedJobCard = null,
 	releaseDrag = null,
@@ -309,6 +319,142 @@ async function addReferenceImage(source) {
 		});
 
 		renderReferenceImages();
+	}
+}
+
+async function openResizeModal(item, trigger) {
+	closeResizeModal();
+
+	const state = {
+		item: item,
+		trigger: trigger,
+		controller: new AbortController(),
+		width: 0,
+		height: 0,
+		max: 0
+	};
+
+	resizeState = state;
+
+	$resizeModal.classList.add("open", "loading");
+	$resizeWidth.value = "";
+	$resizeHeight.value = "";
+	$resizeWidth.disabled = true;
+	$resizeHeight.disabled = true;
+	$resizePercent.disabled = true;
+	$resizePercentValue.value = "";
+	$applyResizeBtn.disabled = true;
+
+	$cancelResizeBtn.focus();
+
+	try {
+		const [original, current] = await Promise.all([assetInfo(item.original), assetInfo(item.processed || item.original)]);
+
+		if (resizeState !== state) {
+			return;
+		}
+
+		state.width = Math.max(1, Math.round(original.width * (item.crop?.width || 1)));
+		state.height = Math.max(1, Math.round(original.height * (item.crop?.height || 1)));
+		state.max = Math.max(current.width, current.height);
+
+		$resizeWidth.max = state.width;
+		$resizeHeight.max = state.height;
+		$resizeWidth.value = current.width;
+		$resizeHeight.value = current.height;
+		$resizeWidth.disabled = false;
+		$resizeHeight.disabled = false;
+		$resizePercent.disabled = false;
+		$applyResizeBtn.disabled = false;
+
+		updateResizePercentage();
+
+		$resizeWidth.focus();
+		$resizeWidth.select();
+	} catch (error) {
+		if (resizeState === state) {
+			$resizeError.textContent = "Could not load the image dimensions. Close and try again.";
+			$resizeModal.classList.add("errored");
+		}
+	} finally {
+		if (resizeState === state) {
+			$resizeModal.classList.remove("loading");
+		}
+	}
+}
+
+function closeResizeModal() {
+	const trigger = resizeState?.trigger;
+
+	resizeState?.controller.abort();
+	resizeState = null;
+
+	$resizeModal.classList.remove("open", "loading", "errored");
+
+	trigger?.focus();
+}
+
+function updateResizeDimensions(input) {
+	if (!resizeState || !resizeState.width || !input.validity.valid) {
+		$applyResizeBtn.disabled = true;
+
+		return;
+	}
+
+	const longest = Math.max(resizeState.width, resizeState.height),
+		dimension = input === $resizeWidth ? resizeState.width : resizeState.height;
+
+	resizeState.max = clamp(Math.round(input.valueAsNumber * longest / dimension), 1, longest);
+
+	const scale = resizeState.max / longest;
+
+	$resizeWidth.value = Math.max(1, Math.round(resizeState.width * scale));
+	$resizeHeight.value = Math.max(1, Math.round(resizeState.height * scale));
+	$applyResizeBtn.disabled = false;
+	$resizeModal.classList.remove("errored");
+
+	updateResizePercentage();
+}
+
+function updateResizePercentage() {
+	const percent = resizeState.max / Math.max(resizeState.width, resizeState.height) * 100;
+
+	$resizePercent.value = clamp(Math.round(percent), 1, 100);
+	$resizePercentValue.value = `${Number(percent.toFixed(1))}%`;
+	$resizePercent.style.setProperty("--resize-progress", `${($resizePercent.valueAsNumber - 1) / 99 * 100}%`);
+}
+
+function applyResizePercentage() {
+	if (!resizeState || !resizeState.width || $resizePercent.disabled) {
+		return;
+	}
+
+	const longest = Math.max(resizeState.width, resizeState.height),
+		input = resizeState.width >= resizeState.height ? $resizeWidth : $resizeHeight;
+
+	input.value = Math.max(1, Math.round(longest * $resizePercent.valueAsNumber / 100));
+
+	updateResizeDimensions(input);
+}
+
+async function downloadReferenceImage(item, index) {
+	const source = item.processed || item.original,
+		lease = acquireImage(source);
+
+	try {
+		const [url, info] = await Promise.all([lease.url, assetInfo(source)]),
+			link = document.createElement("a");
+
+		link.href = url;
+		link.download = `reference-${index + 1}.${info.type.split("/")[1] || "png"}`;
+
+		link.click();
+	} catch (error) {
+		console.error("Failed to download reference image", error);
+
+		alert("Could not download the reference image.");
+	} finally {
+		setTimeout(() => lease.release(), 1000);
 	}
 }
 
@@ -735,15 +881,51 @@ function renderReferenceImages() {
 
 		wrapper.appendChild(img);
 
-		const editBtn = document.createElement("button");
+		const actions = document.createElement("div"),
+			editBtn = document.createElement("button"),
+			downloadBtn = document.createElement("button"),
+			downloadIcon = document.createElement("span"),
+			resizeBtn = document.createElement("button");
 
-		editBtn.className = "edit-ref-btn";
+		actions.className = "ref-actions";
+		editBtn.className = "ref-control edit-ref-btn";
 		editBtn.textContent = "Edit";
 		editBtn.title = "Crop and adjust image";
 		editBtn.addEventListener("pointerdown", event => event.stopPropagation());
 		editBtn.addEventListener("click", () => openCropModal(item));
 
-		wrapper.appendChild(editBtn);
+		downloadBtn.className = "ref-control download-ref-btn";
+		downloadBtn.title = "Download reference image";
+		downloadBtn.setAttribute("aria-label", "Download reference image");
+		downloadIcon.className = "download-ref-icon";
+		downloadIcon.setAttribute("aria-hidden", "true");
+
+		downloadBtn.append(downloadIcon);
+
+		downloadBtn.addEventListener("pointerdown", event => event.stopPropagation());
+		downloadBtn.addEventListener("click", () => downloadReferenceImage(item, index));
+
+		resizeBtn.className = "ref-control resize-ref-btn";
+		resizeBtn.textContent = "...";
+		resizeBtn.title = "Resize reference image";
+		resizeBtn.setAttribute("aria-label", "Resize reference image");
+
+		resizeBtn.addEventListener("pointerdown", event => event.stopPropagation());
+		resizeBtn.addEventListener("click", () => openResizeModal(item, resizeBtn));
+
+		assetInfo(item.processed || item.original).then(info => {
+			resizeBtn.textContent = `${info.width}x${info.height}`;
+			resizeBtn.setAttribute("aria-label", `Resize reference image, ${info.width} by ${info.height} pixels`);
+			resizeBtn.disabled = false;
+		}).catch(error => {
+			resizeBtn.textContent = "Unavailable";
+			resizeBtn.disabled = true;
+
+			console.error("Failed to load reference dimensions", error);
+		});
+
+		actions.append(editBtn, downloadBtn);
+		wrapper.append(actions, resizeBtn);
 
 		const rmBtn = document.createElement("button");
 
@@ -754,6 +936,10 @@ function renderReferenceImages() {
 		rmBtn.addEventListener("click", () => {
 			if (cropItem === item) {
 				closeCropModal();
+			}
+
+			if (resizeState?.item === item) {
+				closeResizeModal();
 			}
 
 			referenceImages.splice(index, 1);
@@ -2146,6 +2332,88 @@ $cropModal.querySelector(".background").addEventListener("click", closeCropModal
 
 $closeCropModal.addEventListener("click", closeCropModal);
 
+$resizeModal.querySelector(".background").addEventListener("click", closeResizeModal);
+$cancelResizeBtn.addEventListener("click", closeResizeModal);
+$resizeWidth.addEventListener("input", () => updateResizeDimensions($resizeWidth));
+$resizeHeight.addEventListener("input", () => updateResizeDimensions($resizeHeight));
+$resizePercent.addEventListener("input", applyResizePercentage);
+
+$resizeModal.addEventListener("keydown", event => {
+	if (event.key !== "Tab") {
+		return;
+	}
+
+	const controls = $resizeForm.querySelectorAll("input:not(:disabled), button:not(:disabled)"),
+		first = controls[0],
+		last = controls[controls.length - 1];
+
+	if (event.shiftKey && document.activeElement === first) {
+		event.preventDefault();
+
+		last.focus();
+	} else if (!event.shiftKey && document.activeElement === last) {
+		event.preventDefault();
+
+		first.focus();
+	}
+});
+
+$resizeForm.addEventListener("submit", async event => {
+	event.preventDefault();
+
+	const state = resizeState;
+
+	if (!state || $applyResizeBtn.disabled || !$resizeForm.reportValidity()) {
+		return;
+	}
+
+	const item = state.item,
+		max = state.max < Math.max(state.width, state.height) ? state.max : 0;
+
+	$applyResizeBtn.disabled = true;
+	$resizeWidth.disabled = true;
+	$resizeHeight.disabled = true;
+	$resizePercent.disabled = true;
+
+	$resizeModal.classList.add("loading");
+	$resizeModal.classList.remove("errored");
+
+	try {
+		const result = await deriveAsset(item.original, {
+			crop: item.crop,
+			brightness: item.brightness || 0,
+			contrast: item.contrast || 0,
+			max: max,
+			format: max || item.crop || item.brightness || item.contrast ? "image/png" : undefined
+		}, state.controller.signal);
+
+		if (resizeState !== state || !referenceImages.includes(item)) {
+			return;
+		}
+
+		item.resizeMax = max;
+		item.processed = result;
+
+		closeResizeModal();
+		renderReferenceImages();
+
+		$refImagesContainer.querySelectorAll(".resize-ref-btn")[referenceImages.indexOf(item)]?.focus();
+	} catch (error) {
+		if (resizeState === state && error.name !== "AbortError") {
+			$resizeError.textContent = "Could not resize the image. Please try again.";
+			$resizeModal.classList.add("errored");
+		}
+	} finally {
+		if (resizeState === state) {
+			$resizeModal.classList.remove("loading");
+			$applyResizeBtn.disabled = false;
+			$resizeWidth.disabled = false;
+			$resizeHeight.disabled = false;
+			$resizePercent.disabled = false;
+		}
+	}
+});
+
 $resetCropBtn.addEventListener("click", () => {
 	if (!cropItem && !cropJob) {
 		return;
@@ -2176,11 +2444,12 @@ $applyCropBtn.addEventListener("click", async () => {
 		item = cropItem,
 		signal = cropController.signal,
 		original = job ? job.originalResult || job.result : item.original,
-		hasEdits = Boolean(selection || brightness || contrast),
+		hasEdits = Boolean(selection || brightness || contrast || item?.resizeMax),
 		edits = {
 			crop: selection,
 			brightness: brightness,
 			contrast: contrast,
+			max: item?.resizeMax || 0,
 			format: "image/png",
 		};
 
@@ -2690,6 +2959,10 @@ document.addEventListener("keydown", event => {
 
 		if ($cropModal?.classList.contains("open")) {
 			closeCropModal();
+		}
+
+		if ($resizeModal.classList.contains("open")) {
+			closeResizeModal();
 		}
 	}
 });
