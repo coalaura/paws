@@ -3,20 +3,20 @@ module paws
 go 1.27
 
 require (
-	github.com/coalaura/openingrouter v1.1.8
-	github.com/coalaura/plain v1.5.3
-	github.com/go-chi/chi/v5 v5.3.2
+	github.com/coalaura/openingrouter v1.1.10
+	github.com/coalaura/plain v1.6.6
+	github.com/go-chi/chi/v5 v5.5.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/vmihailenco/msgpack/v5 v5.4.1
-	golang.org/x/crypto v0.56.0
+	golang.org/x/crypto v0.59.0
 )
 
 require (
-	github.com/coalaura/atom v0.1.0 // indirect
+	github.com/coalaura/atom v0.2.0 // indirect
 	github.com/coalaura/byteconv v0.1.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/term v0.45.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/term v0.48.0 // indirect
 )
