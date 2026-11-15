@@ -248,7 +248,10 @@ func imagePriceVariant(request EstimateRequest, variant string) int {
 			return 2
 		}
 	case "high_resolution":
-		if request.Model == "bytedance-seed/seedream-5-0-pro" && request.Resolution == "2K" {
+		// Seedream's 2K area tier exceeds the published 2.61M-pixel threshold.
+		// https://www.volcengine.com/docs/82379/1544106
+		seedreamHighResolution := request.Model == "bytedance-seed/seedream-5-0-pro" || request.Model == "bytedance-seed/seedream-5-5"
+		if seedreamHighResolution && request.Resolution == "2K" {
 			return 2
 		}
 	}

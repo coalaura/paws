@@ -32,10 +32,14 @@ var (
 		"black-forest-labs/flux.2-klein-4b": {First: 0.014, Additional: 0.001},
 	}
 
-	// OpenAI's published GPT Image 2.5 output-token calculator (2026-10-31).
+	// GPT Image 2.5 and 2.6 share quality axes, but 2.6 scales low/medium tokens.
 	// https://developers.openai.com/api/docs/guides/image-generation#calculating-costs
 	gptImage25QualityAxis = map[string]int64{
 		"low": 16, "medium": 24, "high": 48, "xhigh": 64, "max": 96,
+	}
+
+	gptImage26TokenMultiplier = map[string]float64{
+		"low": 4.2, "medium": 3.3,
 	}
 )
 
@@ -198,9 +202,24 @@ func imageBillableQuantity(request EstimateRequest, line ImagePriceLine, quantit
 func estimateFallbackCost(request EstimateRequest, quantities imageQuantities) EstimateResponse {
 	result := EstimateResponse{Source: "unavailable", Notes: []string{"No usable price or output-token estimate is available for this configuration."}}
 
+	if examples, ok := minimaxImageCostExamples[request.Model]; ok && request.OutputTokens == nil {
+		return estimateMiniMaxExample(request, examples)
+	}
+
 	var cost float64
 
-	if rates, ok := imageModelTokenRates[request.Model]; ok {
+	if lines, ok := imageModelPriceLines[request.Model]; ok {
+		var complete bool
+
+		cost, complete = estimateEndpointCost(request, lines, quantities)
+		if !complete {
+			return result
+		}
+	} else if rates, ok := imageModelTokenRates[request.Model]; ok {
+		if quantities.OutputTokens < 0 || quantities.InputTokens < 0 {
+			return result
+		}
+
 		cost = (quantities.TextTokens*rates.TextIn + quantities.InputTokens*rates.ImageIn + quantities.OutputTokens*rates.ImageOut) / 1e6
 	} else if rates, ok := fluxMegapixelPricing[request.Model]; ok {
 		cost = rates.First + math.Max(0, quantities.OutputMP-1)*rates.Additional + quantities.InputMP*rates.Input
@@ -258,15 +277,23 @@ func estimateImageQuantities(request EstimateRequest) imageQuantities {
 	}
 
 	switch request.Model {
-	case "openai/gpt-image-2", "openai/gpt-5.4-image-2", "openai/gpt-image-2.5-sunburst", "openai/gpt-image-2.5-flare":
+	case "openai/gpt-image-2", "openai/gpt-5.4-image-2", "openai/gpt-image-2.5-sunburst", "openai/gpt-image-2.5-flare", "openai/gpt-image-2.6-sunburst", "openai/gpt-image-2.6-flare":
 		width, height = resolveGPTImage2Size(request)
 		axis := gptImage2QualityAxis[quality]
 
-		if strings.HasPrefix(request.Model, "openai/gpt-image-2.5-") {
+		if strings.HasPrefix(request.Model, "openai/gpt-image-2.5-") || strings.HasPrefix(request.Model, "openai/gpt-image-2.6-") {
 			axis = gptImage25QualityAxis[quality]
 		}
 
 		quantities.OutputTokens = float64(gptImageOutputTokens(width, height, axis))
+
+		if strings.HasPrefix(request.Model, "openai/gpt-image-2.6-") {
+			if multiplier, ok := gptImage26TokenMultiplier[quality]; ok {
+				// OpenAI rounds after multiplying the already-ceiled base token count.
+				quantities.OutputTokens = math.Round(quantities.OutputTokens * multiplier)
+			}
+		}
+
 		quantities.Notes = append(quantities.Notes, "Output dimensions and reference tokenization are estimated; provider-selected sizes can differ.")
 	case "openai/gpt-image-1", "openai/gpt-5-image":
 		quantities.OutputTokens = float64(gptImage1OutputTokens[resolveGPTImage1Size(request)][quality])
@@ -309,6 +336,18 @@ func estimateImageQuantities(request EstimateRequest) imageQuantities {
 		case "4K":
 			quantities.OutputTokens = 2520
 		}
+	case "tencent/hy-world-2.1-panorama":
+		// https://www.tencentcloud.com/document/product/1300/78937
+		quantities.OutputTokens = 481250
+	case "minimax/minimax-h3-image", "minimax/minimax-h3-image-highspeed":
+		quantities.OutputTokens = -1
+		quantities.InputTokens = 0
+
+		if len(request.References) > 0 {
+			quantities.InputTokens = -1
+		}
+
+		quantities.Notes = append(quantities.Notes, "MiniMax does not publish a complete image-token formula; prompt-enhancement charges are not included in token-budget estimates.")
 	case "tencent/hy-image-v3.5-preview":
 		// https://www.tencentcloud.com/document/product/1300/78937
 		quantities.OutputTokens = 15000

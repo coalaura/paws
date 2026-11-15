@@ -56,14 +56,20 @@ type imageTokenRates struct {
 
 var (
 	imageModelTokenRates = map[string]imageTokenRates{
-		"openai/gpt-image-2":            {ImageIn: 8, ImageOut: 30, TextIn: 5},
-		"openai/gpt-image-2.5-sunburst": {ImageIn: 8, ImageOut: 30, TextIn: 5},
-		"openai/gpt-image-2.5-flare":    {ImageIn: 8, ImageOut: 30, TextIn: 5},
-		"openai/gpt-5.4-image-2":        {ImageIn: 8, ImageOut: 30, TextIn: 5},
-		"openai/gpt-image-1":            {ImageIn: 10, ImageOut: 40, TextIn: 5},
-		"openai/gpt-image-1-mini":       {ImageIn: 2.5, ImageOut: 8, TextIn: 2},
-		"openai/gpt-5-image":            {ImageIn: 10, ImageOut: 40, TextIn: 5},
-		"openai/gpt-5-image-mini":       {ImageIn: 2.5, ImageOut: 8, TextIn: 2},
+		// https://openrouter.ai/api/v1/images/models/{model}/endpoints
+		"openai/gpt-image-2.6-sunburst":      {ImageIn: 8, ImageOut: 30, TextIn: 5},
+		"openai/gpt-image-2.6-flare":         {ImageIn: 8, ImageOut: 30, TextIn: 5},
+		"minimax/minimax-h3-image":           {ImageIn: 1.5, ImageOut: 3.8, TextIn: 2.3},
+		"minimax/minimax-h3-image-highspeed": {ImageIn: 3, ImageOut: 7.6, TextIn: 2.3},
+		"tencent/hy-world-2.1-panorama":      {ImageOut: 1.6},
+		"openai/gpt-image-2":                 {ImageIn: 8, ImageOut: 30, TextIn: 5},
+		"openai/gpt-image-2.5-sunburst":      {ImageIn: 8, ImageOut: 30, TextIn: 5},
+		"openai/gpt-image-2.5-flare":         {ImageIn: 8, ImageOut: 30, TextIn: 5},
+		"openai/gpt-5.4-image-2":             {ImageIn: 8, ImageOut: 30, TextIn: 5},
+		"openai/gpt-image-1":                 {ImageIn: 10, ImageOut: 40, TextIn: 5},
+		"openai/gpt-image-1-mini":            {ImageIn: 2.5, ImageOut: 8, TextIn: 2},
+		"openai/gpt-5-image":                 {ImageIn: 10, ImageOut: 40, TextIn: 5},
+		"openai/gpt-5-image-mini":            {ImageIn: 2.5, ImageOut: 8, TextIn: 2},
 	}
 
 	gptImage2QualityAxis = map[string]int64{
