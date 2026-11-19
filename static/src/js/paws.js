@@ -1580,15 +1580,17 @@ function setupJobUI(ui, job) {
 
 		closeJobMenus();
 
-		const panelRect = $grid.parentElement.getBoundingClientRect(),
+		const panel = $grid.parentElement,
+			panelRect = panel.getBoundingClientRect(),
 			cardRect = ui.card.getBoundingClientRect();
 
-		ui.menu.style.maxHeight = `${Math.max(0, panelRect.height - 16)}px`;
+		ui.menu.style.setProperty("--menu-max-width", `${Math.max(0, panel.clientWidth - 16)}px`);
+		ui.menu.style.maxHeight = `${Math.max(0, panel.clientHeight - 16)}px`;
 		ui.menu.classList.add("open");
 		ui.card.classList.add("menu-open");
 
-		const left = Math.max(panelRect.left + 8, Math.min(event.clientX, panelRect.right - ui.menu.offsetWidth - 8)),
-			top = Math.max(panelRect.top + 8, Math.min(event.clientY, panelRect.bottom - ui.menu.offsetHeight - 8));
+		const left = Math.max(panelRect.left + 8, Math.min(event.clientX, panelRect.left + panel.clientWidth - ui.menu.offsetWidth - 8)),
+			top = Math.max(panelRect.top + 8, Math.min(event.clientY, panelRect.top + panel.clientHeight - ui.menu.offsetHeight - 8));
 
 		ui.menu.style.left = `${left - cardRect.left}px`;
 		ui.menu.style.top = `${top - cardRect.top}px`;

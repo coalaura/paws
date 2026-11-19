@@ -11,7 +11,14 @@ export class Gallery {
 
 		this.panel.addEventListener("scroll", () => this.schedule(), { passive: true });
 
-		this.observer = new ResizeObserver(() => this.schedule());
+		this.observer = new ResizeObserver(() => {
+			for (const entry of this.mounted.values()) {
+				entry.ui.menu.classList.remove("open");
+				entry.ui.card.classList.remove("menu-open");
+			}
+
+			this.schedule();
+		});
 		this.observer.observe(this.panel);
 
 		this.timer = setInterval(() => {

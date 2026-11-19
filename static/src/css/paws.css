@@ -856,6 +856,7 @@ input:focus {
 }
 
 .job-menu {
+	display: none;
 	position: absolute;
 	z-index: 35;
 	background: var(--c-mantle);
@@ -863,8 +864,8 @@ input:focus {
 	border-radius: 2px;
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 	padding: 6px;
-	min-width: 210px;
-	max-width: calc(100cqw - 16px);
+	min-width: min(210px, var(--menu-max-width));
+	max-width: var(--menu-max-width);
 	overflow-y: auto;
 	opacity: 0;
 	visibility: hidden;
@@ -877,6 +878,7 @@ input:focus {
 }
 
 .job-menu.open {
+	display: block;
 	opacity: 1;
 	visibility: visible;
 	transform: translateY(0);
@@ -893,7 +895,8 @@ input:focus {
 	font-size: 13px;
 	color: var(--c-text);
 	transition: background 0.15s;
-	white-space: nowrap;
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .job-menu button.job-menu-item {
@@ -1815,6 +1818,13 @@ body.drag-over::after {
 @container (min-width: 3000px) {
 	#grid {
 		--cols: 12;
+	}
+}
+
+@starting-style {
+	.job-menu.open {
+		opacity: 0;
+		transform: translateY(-4px);
 	}
 }
 
