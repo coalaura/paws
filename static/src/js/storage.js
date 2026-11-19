@@ -20,7 +20,8 @@ let database,
 	pendingWrites = Promise.resolve(),
 	migrating = true,
 	jobOrder = "",
-	collectionTimer;
+	collectionTimer,
+	collectionDue = 0;
 
 export async function connectDB() {
 	if (database) {
@@ -431,11 +432,14 @@ function shareDerivative(key, produce, signal) {
 	});
 }
 
-export async function thumbnail(id, max, signal, fit = "contain") {
-	const key = `${id}:${max}:${fit}:webp`,
-		existing = await database.thumbnails.get(key);
+export async function thumbnail(id, max, signal, fit = "contain", purpose = "") {
+	// Resizing replaces a purpose's cached thumbnail instead of accumulating size variants.
+	const key = `${id}:${purpose}`,
+		existing = purpose ? await database.thumbnails.get(key) : null;
 
-	if (existing) {
+	if (existing && existing.max === max && existing.fit === fit) {
+		signal?.throwIfAborted();
+
 		await database.thumbnails.update(key, { lastUsed: Date.now() });
 
 		return existing;
@@ -456,15 +460,30 @@ export async function thumbnail(id, max, signal, fit = "contain") {
 
 	signal?.throwIfAborted();
 
+	// Temporary views such as the image editor only need their in-memory preview.
+	if (!purpose) {
+		return result;
+	}
+
 	const record = {
 		key: key,
 		source: id,
+		max: max,
+		fit: fit,
 		...result,
 		bytes: result.blob.size,
 		lastUsed: Date.now(),
 	};
 
-	await database.transaction("rw", database.thumbnails, async () => {
+	await database.transaction("rw", database.assetInfo, database.thumbnails, async () => {
+		const info = await database.assetInfo.get(id);
+
+		signal?.throwIfAborted();
+
+		if (!info) {
+			return;
+		}
+
 		await database.thumbnails.put(record);
 
 		const records = await database.thumbnails.orderBy("lastUsed").reverse().toArray(),
@@ -483,39 +502,61 @@ export async function thumbnail(id, max, signal, fit = "contain") {
 		await database.thumbnails.bulkDelete(removed);
 	});
 
+	scheduleCollection();
+
 	return record;
 }
 
-function scheduleCollection() {
+function scheduleCollection(delay = CollectionDelay) {
 	if (migrating) {
+		return;
+	}
+
+	const due = Date.now() + delay;
+
+	if (collectionTimer && collectionDue <= due) {
 		return;
 	}
 
 	clearTimeout(collectionTimer);
 
-	collectionTimer = setTimeout(() => enqueue(collectAssets), CollectionDelay);
+	collectionDue = due;
+	collectionTimer = setTimeout(() => {
+		collectionTimer = null;
+
+		enqueue(collectAssets);
+	}, delay);
 }
 
 async function collectAssets() {
+	let nextCollection = Infinity;
+
 	await database.transaction("rw", database.jobs, database.settings, database.assets, database.assetInfo, database.thumbnails, async () => {
 		const live = new Set(assetHolds.keys()),
+			previews = new Set(),
+			referenceThumbnails = new Set(),
 			references = (await database.settings.get("referenceImages"))?.value || [];
 
 		for (const reference of references) {
 			live.add(reference.original);
 			live.add(reference.processed);
+			previews.add(reference.processed || reference.original);
 		}
 
 		for (const job of await database.jobs.toArray()) {
 			live.add(job.result);
 			live.add(job.originalResult);
+			previews.add(job.result);
 
 			for (const id of job.payload.images || []) {
 				live.add(id);
+				referenceThumbnails.add(id);
 			}
 		}
 
 		const dead = [],
+			thumbnailKeys = new Set(),
+			now = Date.now(),
 			records = await database.assetInfo.toArray(),
 			derivatives = records.filter(info => info.source && live.has(info.source) && !live.has(info.id)).sort((left, right) => right.lastUsed - left.lastUsed);
 
@@ -531,18 +572,35 @@ async function collectAssets() {
 
 		for (const info of records) {
 			// A grace period protects newly imported assets until their owner is committed.
-			if (!live.has(info.id) && !assetHolds.has(info.id) && Date.now() - info.createdAt > AssetGracePeriod) {
-				dead.push(info.id);
+			if (!live.has(info.id) && !assetHolds.has(info.id)) {
+				const remaining = info.createdAt + AssetGracePeriod - now;
+
+				if (remaining <= 0) {
+					dead.push(info.id);
+				} else {
+					nextCollection = Math.min(nextCollection, remaining + CollectionDelay);
+				}
+			}
+
+			if (previews.has(info.id)) {
+				thumbnailKeys.add(`${info.id}:preview`);
+			}
+
+			if (referenceThumbnails.has(info.id)) {
+				thumbnailKeys.add(`${info.id}:reference`);
 			}
 		}
 
+		// Inspect keys only: obsolete sizes and orphaned thumbnails need no blob reads.
+		const cachedKeys = await database.thumbnails.toCollection().primaryKeys(),
+			obsolete = cachedKeys.filter(key => !thumbnailKeys.has(key));
+
 		await database.assets.bulkDelete(dead);
 		await database.assetInfo.bulkDelete(dead);
-		await database.thumbnails.where("source").anyOf(dead).delete();
+		await database.thumbnails.bulkDelete(obsolete);
 	});
 
-	// A one-shot sweep after the grace period also collects aborted imports in an idle page.
-	clearTimeout(collectionTimer);
-
-	collectionTimer = setTimeout(() => enqueue(collectAssets), AssetGracePeriod + CollectionDelay);
+	if (Number.isFinite(nextCollection)) {
+		scheduleCollection(nextCollection);
+	}
 }

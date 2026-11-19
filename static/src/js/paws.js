@@ -1354,7 +1354,7 @@ function createJobDOM(job) {
 		for (const src of refs) {
 			const refImg = document.createElement("img");
 
-			bindImage(refImg, src, Math.ceil(24 * devicePixelRatio * 1.5 / 64) * 64, "cover");
+			bindImage(refImg, src, Math.ceil(24 * devicePixelRatio * 1.5 / 64) * 64, "cover", "reference");
 
 			refImg.draggable = true;
 

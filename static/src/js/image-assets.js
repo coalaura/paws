@@ -13,8 +13,8 @@ const imageCache = new Map(),
 
 let cachedBytes = 0;
 
-export function acquireImage(id, max = 0, fit = "contain") {
-	const key = `${id}:${max}:${fit}`;
+export function acquireImage(id, max = 0, fit = "contain", purpose = "") {
+	const key = `${id}:${max}:${fit}:${purpose}`;
 
 	let entry = imageCache.get(key);
 
@@ -29,7 +29,7 @@ export function acquireImage(id, max = 0, fit = "contain") {
 
 		imageCache.set(key, entry);
 
-		entry.promise = loadImageURL(entry, id, max, fit);
+		entry.promise = loadImageURL(entry, id, max, fit, purpose);
 	}
 
 	if (!entry.count) {
@@ -68,9 +68,9 @@ export function acquireImage(id, max = 0, fit = "contain") {
 	};
 }
 
-async function loadImageURL(entry, id, max, fit) {
+async function loadImageURL(entry, id, max, fit, purpose) {
 	const signal = entry.controller.signal,
-		record = max ? await thumbnail(id, max, signal, fit) : { blob: await assetBlob(id), ...await assetInfo(id) };
+		record = max ? await thumbnail(id, max, signal, fit, purpose) : { blob: await assetBlob(id), ...await assetInfo(id) };
 
 	signal.throwIfAborted();
 
@@ -133,9 +133,9 @@ function releaseLease(image) {
 	image.removeAttribute("src");
 }
 
-export function bindImage(image, id, max = 0, fit = "contain") {
+export function bindImage(image, id, max = 0, fit = "contain", purpose = "") {
 	releaseImage(image);
-	attachImage(image, id, max, fit);
+	attachImage(image, id, max, fit, purpose);
 }
 
 export function bindResponsiveImage(image, id) {
@@ -184,7 +184,7 @@ function resizeImage(image, binding, max) {
 
 	binding.pending?.release();
 
-	const lease = acquireImage(binding.id, max, "cover");
+	const lease = acquireImage(binding.id, max, "cover", "preview");
 
 	binding.pending = lease;
 	binding.max = max;
@@ -218,12 +218,12 @@ function resizeImage(image, binding, max) {
 	});
 }
 
-function attachImage(image, id, max, fit) {
+function attachImage(image, id, max, fit, purpose) {
 	if (!id) {
 		return;
 	}
 
-	const lease = acquireImage(id, max, fit);
+	const lease = acquireImage(id, max, fit, purpose);
 
 	imageBindings.set(image, lease);
 
