@@ -595,9 +595,14 @@ async function collectAssets() {
 		const cachedKeys = await database.thumbnails.toCollection().primaryKeys(),
 			obsolete = cachedKeys.filter(key => !thumbnailKeys.has(key));
 
-		await database.assets.bulkDelete(dead);
-		await database.assetInfo.bulkDelete(dead);
-		await database.thumbnails.bulkDelete(obsolete);
+		if (dead.length > 0) {
+			await database.assets.bulkDelete(dead);
+			await database.assetInfo.bulkDelete(dead);
+		}
+
+		if (obsolete.length > 0) {
+			await database.thumbnails.bulkDelete(obsolete);
+		}
 	});
 
 	if (Number.isFinite(nextCollection)) {
