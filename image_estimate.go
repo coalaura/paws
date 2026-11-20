@@ -57,6 +57,8 @@ type imageTokenRates struct {
 var (
 	imageModelTokenRates = map[string]imageTokenRates{
 		// https://openrouter.ai/api/v1/images/models/{model}/endpoints
+		"microsoft/mai-image-2.7":            {ImageIn: 8, ImageOut: 34, TextIn: 5},
+		"microsoft/mai-image-2.7-flash":      {ImageIn: 2.5, ImageOut: 10, TextIn: 1.75},
 		"openai/gpt-image-2.6-sunburst":      {ImageIn: 8, ImageOut: 30, TextIn: 5},
 		"openai/gpt-image-2.6-flare":         {ImageIn: 8, ImageOut: 30, TextIn: 5},
 		"minimax/minimax-h3-image":           {ImageIn: 1.5, ImageOut: 3.8, TextIn: 2.3},

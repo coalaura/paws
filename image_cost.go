@@ -359,10 +359,10 @@ func estimateImageQuantities(request EstimateRequest) imageQuantities {
 		if request.Resolution == "1.5K" {
 			quantities.Notes = append(quantities.Notes, "1.5K uses the published 1K/2K token allowance.")
 		}
-	case "microsoft/mai-image-2.5", "microsoft/mai-image-2.5-pro", "microsoft/mai-image-2.6", "microsoft/mai-image-2.6-flash":
-		// Approximately 1,024 tokens reproduce the measured baselines in model_data.go.
+	case "microsoft/mai-image-2.5", "microsoft/mai-image-2.5-pro", "microsoft/mai-image-2.6", "microsoft/mai-image-2.6-flash", "microsoft/mai-image-2.7", "microsoft/mai-image-2.7-flash":
+		// Reuse the measured MAI family baselines in model_data.go for newer versions.
 		quantities.OutputTokens = 1024
-		quantities.Notes = append(quantities.Notes, "MAI estimate uses a measured 1,024-token output baseline; reference tokens are approximate.")
+		quantities.Notes = append(quantities.Notes, "MAI estimate uses an approximate 1,024-token output baseline based on earlier models; reference tokens are approximate.")
 	default:
 		quantities.OutputTokens = -1
 	}
